@@ -2,190 +2,211 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>High Quality Discord Clone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Discord Mobile</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-tertiary: #202225;
-            --bg-secondary: #2f3136;
-            --bg-primary: #36393f;
-            --text-normal: #dcddde;
-            --accent: #5865f2;
-            --danger: #ed4245;
-            --success: #3ba55c;
+            --bg-dark: #202225;     /* Темный фон меню */
+            --bg-chat: #36393f;     /* Фон чата */
+            --bg-header: #2f3136;   /* Шапка */
+            --accent: #5865f2;      /* Синий Discord */
+            --danger: #ed4245;      /* Красный */
+            --success: #3ba55c;     /* Зеленый */
+            --text: #dcddde;
         }
 
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text-normal); overflow: hidden; display: flex; height: 100vh; }
-
-        /* --- UI COMPONENT: LOGIN --- */
-        #loginOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999;
-            display: flex; justify-content: center; align-items: center; padding: 20px;
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-chat); color: var(--text);
+            /* Фикс высоты для мобилок */
+            height: 100dvh; 
+            width: 100%;
+            overflow: hidden;
+            display: flex; flex-direction: column;
         }
-        .login-box { background: var(--bg-secondary); padding: 30px; border-radius: 8px; width: 100%; max-width: 400px; text-align: center; }
-        .login-input { width: 100%; padding: 12px; margin: 10px 0; background: var(--bg-tertiary); border: none; color: white; border-radius: 4px; font-size: 16px; }
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 4px; color: white; cursor: pointer; margin-top: 10px; font-weight: bold; font-size: 16px;}
-        .btn-blue { background: var(--accent); }
-        .btn-gray { background: #4f545c; }
 
-        /* --- UI COMPONENT: MAIN LAYOUT --- */
-        /* Sidebar (Desktop default) */
-        .sidebar { 
-            width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; flex-shrink: 0; 
-            transition: transform 0.3s ease;
-            z-index: 100;
+        /* --- 1. ШАПКА (HEADER) --- */
+        .app-header {
+            height: 60px; flex-shrink: 0;
+            background: var(--bg-header);
+            border-bottom: 1px solid #202225;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 15px;
+            z-index: 10;
         }
         
-        /* Mobile Header (Hidden on Desktop) */
-        .mobile-header {
-            display: none; height: 50px; background: var(--bg-tertiary); align-items: center; padding: 0 15px; border-bottom: 1px solid #202225;
-        }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .header-title { font-weight: bold; font-size: 16px; color: white; }
+        .burger-btn { font-size: 20px; cursor: pointer; color: white; background: none; border: none; padding: 5px; }
 
-        .chat-main { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); position: relative; min-width: 0; height: 100%; }
-
-        /* --- VIDEO GRID --- */
-        .video-grid {
-            display: flex; gap: 10px; padding: 10px; background: black; overflow-x: auto; 
-            min-height: 0px; height: 0px; transition: height 0.3s; border-bottom: 1px solid #202225;
+        /* Кнопки управления прямо в шапке для быстрого доступа */
+        .header-controls { display: flex; gap: 10px; }
+        .icon-btn {
+            width: 36px; height: 36px; border-radius: 50%; border: none;
+            background: rgba(0,0,0,0.3); color: var(--text);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; cursor: pointer; transition: 0.2s;
         }
-        .video-grid.show { height: 35vh; min-height: 200px; } /* Занимает 35% экрана */
+        .icon-btn.active { background: var(--success); color: white; }
+        .icon-btn.danger { background: var(--danger); color: white; }
+
+        /* --- 2. ВИДЕО ОБЛАСТЬ --- */
+        #videoContainer {
+            background: black;
+            width: 100%;
+            /* По умолчанию скрыто, раскрывается если есть стрим */
+            height: 0; 
+            transition: height 0.3s ease;
+            overflow-x: auto; /* Горизонтальный скролл для нескольких видео */
+            display: flex;
+            flex-shrink: 0;
+        }
+        #videoContainer.has-video { height: 250px; border-bottom: 1px solid #202225; }
 
         .video-card {
-            position: relative; height: 100%; aspect-ratio: 16/9; background: #202225; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid #444; cursor: pointer;
+            height: 100%; min-width: 100%; /* На телефоне 1 видео = весь экран ширины */
+            position: relative; background: #111;
+            display: flex; justify-content: center; align-items: center;
         }
-        .video-card video { width: 100%; height: 100%; object-fit: contain; background: #000; }
-        .video-label { 
-            position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.7); color: white; 
-            padding: 4px 8px; font-size: 12px; border-radius: 4px; pointer-events: none; 
-        }
-        .fullscreen-hint {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.6); color: white; padding: 10px; border-radius: 5px;
-            opacity: 0; transition: opacity 0.2s; pointer-events: none; font-size: 12px; text-align: center;
-        }
-        .video-card:hover .fullscreen-hint { opacity: 1; }
+        /* Если видео несколько, делаем их поменьше */
+        #videoContainer.multiple .video-card { min-width: 80%; border-right: 1px solid #333; }
 
-        /* --- CHAT AREA --- */
-        .messages-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
-        .message { display: flex; margin-bottom: 5px; animation: fadeIn 0.2s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        .vid-label { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+
+        /* --- 3. ЧАТ (ОСНОВНОЙ) --- */
+        .chat-area {
+            flex: 1; /* Занимает всё оставшееся место */
+            overflow-y: auto; /* Скролл внутри */
+            padding: 15px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
         
-        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; background: #5865f2; flex-shrink: 0;}
-        .msg-header { margin-bottom: 2px; }
-        .msg-username { font-weight: bold; margin-right: 6px; cursor: pointer; font-size: 15px;}
-        .msg-text { color: #dcddde; word-wrap: break-word; white-space: pre-wrap; line-height: 1.4; font-size: 15px; }
-        .msg-time { font-size: 11px; color: #72767d; }
+        .message { display: flex; gap: 10px; animation: fadeUp 0.2s; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+        .msg-content { min-width: 0; } /* Fix flexbox overflow text */
+        .username { font-weight: bold; font-size: 14px; margin-bottom: 2px; }
+        .text { color: #dcddde; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
 
-        /* --- INPUT AREA --- */
-        .input-area { padding: 15px; background: var(--bg-primary); }
-        .input-wrapper { background: #40444b; border-radius: 20px; padding: 0 15px; display: flex; align-items: center; }
-        .chat-input { background: transparent; border: none; color: white; width: 100%; height: 48px; outline: none; font-size: 16px;}
-
-        /* --- CONTROLS (BOTTOM LEFT) --- */
-        .user-panel { background: #292b2f; padding: 10px; display: flex; align-items: center; margin-top: auto; justify-content: space-between; }
-        .control-group { display: flex; gap: 8px; }
-        .control-btn { 
-            background: #202225; border: none; color: var(--text-normal); cursor: pointer; 
-            width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;
-            transition: 0.2s;
+        /* --- 4. ПОЛЕ ВВОДА (INPUT) --- */
+        .input-bar {
+            flex-shrink: 0;
+            padding: 10px;
+            background: var(--bg-chat);
+            border-top: 1px solid #26272d;
+            display: flex; gap: 10px;
         }
-        .control-btn:active { transform: scale(0.95); }
-        .control-btn.active { background: var(--success); color: white; }
-        .control-btn.disabled { color: var(--danger); position: relative; }
-        .control-btn.disabled::after { content: ''; position: absolute; width: 100%; height: 2px; background: var(--danger); top: 50%; left: 0; transform: rotate(45deg); }
+        .chat-input {
+            flex: 1;
+            background: #40444b; border: none; border-radius: 20px;
+            padding: 10px 15px; color: white; font-size: 16px;
+            outline: none;
+        }
+        .send-btn {
+            width: 40px; height: 40px; border-radius: 50%; border: none;
+            background: var(--accent); color: white;
+            display: flex; align-items: center; justify-content: center;
+        }
 
-        /* --- MOBILE OPTIMIZATION --- */
-        @media (max-width: 768px) {
-            .mobile-header { display: flex; }
-            
-            /* Скрываем сайдбар по умолчанию на мобилках */
-            .sidebar { 
-                position: absolute; top: 0; left: 0; height: 100%; width: 80%; 
-                transform: translateX(-100%); box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-            }
-            .sidebar.open { transform: translateX(0); }
-            
-            /* Overlay when sidebar is open */
-            .sidebar-overlay {
-                display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                background: rgba(0,0,0,0.5); z-index: 90;
-            }
-            .sidebar-overlay.show { display: block; }
+        /* --- 5. ВЫЕЗЖАЮЩЕЕ МЕНЮ (SIDEBAR) --- */
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 99;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .overlay.active { opacity: 1; pointer-events: auto; }
 
-            .video-grid.show { height: 250px; } /* На телефоне видео чуть меньше */
-            .video-card { width: 80vw; } /* Одна карточка почти во весь экран */
-            
-            .msg-text { font-size: 16px; } /* Текст крупнее для чтения */
-            .input-area { padding: 10px; }
+        .sidebar {
+            position: fixed; top: 0; left: 0; height: 100%;
+            width: 80%; max-width: 300px;
+            background: var(--bg-dark);
+            z-index: 100;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        }
+        .sidebar.active { transform: translateX(0); }
+
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #111; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .user-list { padding: 15px; flex: 1; overflow-y: auto; }
+        .user-item { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; color: #8e9297; }
+        .room-info { padding: 20px; background: #18191c; text-align: center; }
+        .code-box { background: black; padding: 10px; margin-top: 5px; border-radius: 5px; font-family: monospace; color: var(--accent); font-size: 16px; }
+
+        /* --- LOGIN MODAL --- */
+        #loginScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-chat); z-index: 1000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px; text-align: center;
+        }
+        .login-input { 
+            width: 100%; max-width: 300px; padding: 15px; margin: 10px 0; 
+            background: #202225; border: 1px solid #111; color: white; border-radius: 5px; font-size: 16px;
+        }
+        .btn-main {
+            width: 100%; max-width: 300px; padding: 15px; border: none; border-radius: 5px;
+            background: var(--accent); color: white; font-weight: bold; font-size: 16px; margin-top: 10px;
         }
 
     </style>
 </head>
 <body>
 
-    <div id="loginOverlay">
-        <div class="login-box">
-            <h2 style="color: white; margin-bottom: 10px;">Discord HD</h2>
-            <p style="color: #aaa; font-size: 14px; margin-bottom: 20px;">Двойной тап по видео = Полный экран</p>
-            <input type="text" id="usernameInput" class="login-input" placeholder="Твой никнейм">
-            <button class="btn btn-blue" onclick="createRoom()">Создать комнату</button>
-            <div style="margin: 15px 0; color: #72767d; font-size: 14px;">— ИЛИ —</div>
-            <input type="text" id="joinCodeInput" class="login-input" placeholder="Код комнаты...">
-            <button class="btn btn-gray" onclick="joinRoom()">Присоединиться</button>
+    <div id="loginScreen">
+        <i class="fab fa-discord fa-4x" style="color: var(--accent); margin-bottom: 20px;"></i>
+        <h2 style="margin-bottom: 10px;">Discord Mobile</h2>
+        <input type="text" id="nickInput" class="login-input" placeholder="Ваше имя">
+        <button class="btn-main" onclick="createRoom()">Создать комнату</button>
+        <div style="margin: 20px; color: #777;">— ИЛИ —</div>
+        <input type="text" id="codeInput" class="login-input" placeholder="Код комнаты">
+        <button class="btn-main" style="background: #4f545c;" onclick="joinRoom()">Войти по коду</button>
+    </div>
+
+    <header class="app-header">
+        <div class="header-left">
+            <button class="burger-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
+            <div class="header-title">#general</div>
+        </div>
+        <div class="header-controls">
+            <button class="icon-btn" id="btnMic" onclick="toggleMic()"><i class="fas fa-microphone-slash"></i></button>
+            <button class="icon-btn" id="btnScreen" onclick="toggleScreen()"><i class="fas fa-desktop"></i></button>
+        </div>
+    </header>
+
+    <div id="videoContainer"></div>
+
+    <div class="chat-area" id="chatArea">
+        <div style="text-align: center; color: #777; margin-top: 20px; font-size: 14px;">
+            Комната создана.<br>Откройте меню (слева сверху), чтобы скопировать код.
         </div>
     </div>
 
-    <div class="mobile-header">
-        <button class="control-btn" style="background:none;" onclick="toggleSidebar()">
-            <i class="fas fa-bars"></i>
-        </button>
-        <span style="font-weight: bold; margin-left: 10px;">Групповой чат</span>
+    <div class="input-bar">
+        <input type="text" id="msgInput" class="chat-input" placeholder="Сообщение..." autocomplete="off">
+        <button class="send-btn" onclick="sendMessage()"><i class="fas fa-arrow-up"></i></button>
     </div>
 
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="overlay" onclick="toggleMenu()"></div>
     <div class="sidebar" id="sidebar">
-        <div style="padding: 20px; font-weight: bold; border-bottom: 1px solid #202225; display: flex; justify-content: space-between;">
-            <span>Участники</span>
-            <i class="fas fa-times" style="cursor:pointer; display:none;" onclick="toggleSidebar()" id="closeMenuBtn"></i>
+        <div class="sidebar-header">
+            Участники
+            <i class="fas fa-times" onclick="toggleMenu()"></i>
         </div>
-        
-        <div style="flex:1; padding: 10px; color: #72767d; overflow-y: auto;" id="userList"></div>
-        
-        <div style="padding: 15px; background: #202225; text-align: center; border-top: 1px solid #2f3136;">
-             <div style="font-size: 11px; color: #aaa; margin-bottom: 5px;">ID КОМНАТЫ:</div>
-             <span id="myIdDisplay" style="font-family: monospace; cursor: pointer; color: var(--accent); font-size: 14px; font-weight: bold;" onclick="copyCode()">Нажми, чтобы скопировать</span>
-        </div>
-
-        <div class="user-panel">
-            <div style="font-weight:bold; font-size:14px; color: white; white-space: nowrap; overflow: hidden; max-width: 80px;" id="myDisplayName">User</div>
-            <div class="control-group">
-                <button class="control-btn disabled" id="btnMic" onclick="toggleMic()">
-                    <i class="fas fa-microphone-slash"></i>
-                </button>
-                <button class="control-btn disabled" id="btnScreen" onclick="toggleScreen()">
-                    <i class="fas fa-desktop"></i>
-                </button>
+        <div class="user-list" id="userList">
             </div>
-        </div>
-    </div>
-
-    <div class="chat-main">
-        <div class="video-grid" id="videoGrid"></div>
-
-        <div class="messages-area" id="messagesArea">
-            <div style="margin-top: auto; text-align: center; color: #72767d; padding: 20px;">
-                <p>Начните общение или включите демонстрацию экрана.</p>
-            </div>
-        </div>
-
-        <div class="input-area">
-            <div class="input-wrapper">
-                <input type="text" id="chatInput" class="chat-input" placeholder="Сообщение..." autocomplete="off">
-                <i class="fas fa-paper-plane" style="color: var(--accent); cursor: pointer; padding: 10px;" onclick="sendMessage()"></i>
-            </div>
+        <div class="room-info">
+            <div style="font-size: 12px; color: #aaa;">КОД ПРИГЛАШЕНИЯ:</div>
+            <div class="code-box" id="myIdDisplay" onclick="copyId()">...</div>
+            <div style="font-size: 12px; color: #4ba; margin-top: 5px;">Нажми чтобы скопировать</div>
         </div>
     </div>
 
@@ -193,276 +214,217 @@
         let peer;
         let myId;
         let myName;
+        let connections = []; // Храним соединения
+        let hostConn = null;
         let isHost = false;
-        let dataConnections = []; 
-        let hostConn = null; 
-        let localAudioStream = null;
-        let localScreenStream = null;
+        
+        let localStream = null;
         let currentCalls = [];
 
-        /* --- MOBILE UI LOGIC --- */
-        function toggleSidebar() {
-            const sb = document.getElementById('sidebar');
-            const overlay = document.querySelector('.sidebar-overlay');
-            const closeBtn = document.getElementById('closeMenuBtn');
-            
-            sb.classList.toggle('open');
-            overlay.classList.toggle('show');
-            
-            // Show close X only on mobile
-            if(window.innerWidth <= 768) {
-                closeBtn.style.display = sb.classList.contains('open') ? 'block' : 'none';
-            }
+        /* --- UI FUNCTIONS --- */
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.querySelector('.overlay').classList.toggle('active');
         }
 
-        /* --- P2P CORE --- */
+        /* --- P2P LOGIC --- */
         function initPeer() {
-            myName = document.getElementById('usernameInput').value || "User";
+            myName = document.getElementById('nickInput').value || "MobileUser";
             return new Peer(); 
         }
 
         function createRoom() {
-            if(!document.getElementById('usernameInput').value) return alert("Введите имя!");
+            if(!document.getElementById('nickInput').value) return alert("Введите имя!");
             peer = initPeer();
+            
             peer.on('open', (id) => {
-                myId = id; isHost = true; enterApp();
+                myId = id; isHost = true; startApp();
                 addToUserList(myName + " (Вы)");
             });
-            peer.on('connection', (conn) => setupDataConnection(conn));
-            peer.on('call', handleIncomingCall);
+            peer.on('connection', conn => setupConn(conn));
+            peer.on('call', handleCall);
         }
 
         function joinRoom() {
-            const hostId = document.getElementById('joinCodeInput').value;
-            if(!document.getElementById('usernameInput').value || !hostId) return alert("Введите данные!");
+            const code = document.getElementById('codeInput').value;
+            if(!code || !document.getElementById('nickInput').value) return alert("Введите данные!");
+            
             peer = initPeer();
             peer.on('open', (id) => {
-                myId = id; isHost = false; enterApp();
-                hostConn = peer.connect(hostId, { metadata: { name: myName } });
-                hostConn.on('open', () => {
-                    addToUserList(myName + " (Вы)");
-                });
+                myId = id; isHost = false; startApp();
+                hostConn = peer.connect(code, { metadata: { name: myName } });
+                hostConn.on('open', () => addToUserList(myName + " (Вы)"));
                 hostConn.on('data', handleData);
             });
-            peer.on('call', handleIncomingCall);
+            peer.on('call', handleCall);
         }
 
-        function enterApp() {
-            document.getElementById('loginOverlay').style.display = 'none';
+        function startApp() {
+            document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('myIdDisplay').innerText = myId;
-            document.getElementById('myDisplayName').innerText = myName;
         }
 
         /* --- CHAT LOGIC --- */
-        function setupDataConnection(conn) {
-            dataConnections.push(conn);
+        function setupConn(conn) {
+            connections.push(conn);
             conn.on('open', () => {
-                broadcast({ type: 'system', text: `${conn.metadata.name} присоединился` });
-                // Отправляем новому юзеру список текущих участников (простая реализация)
+                broadcast({ type: 'sys', text: `${conn.metadata.name} вошел.` });
+                addToUserList(conn.metadata.name);
             });
-            conn.on('data', (data) => { handleData(data); broadcast(data); });
-            conn.on('close', () => { dataConnections = dataConnections.filter(c => c !== conn); });
+            conn.on('data', data => { handleData(data); broadcast(data); });
         }
 
-        function broadcast(data) { dataConnections.forEach(c => c.send(data)); }
+        function broadcast(data) {
+            connections.forEach(c => c.send(data));
+        }
 
         function handleData(data) {
             if (data.type === 'chat') {
-                if (data.sender === myName) return;
-                addMessageToUI(data.sender, data.text);
-            } else if (data.type === 'system') {
-                addSystemMsg(data.text);
+                if(data.sender === myName) return;
+                addMessage(data.sender, data.text);
             }
+            if (data.type === 'sys') addSystemMsg(data.text);
         }
 
         function sendMessage() {
-            const input = document.getElementById('chatInput');
+            const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if(!text) return;
+            
+            addMessage(myName, text);
             const msg = { type: 'chat', sender: myName, text: text };
-            addMessageToUI(myName, text); 
-            if(isHost) broadcast(msg); else if(hostConn) hostConn.send(msg);
+            
+            if(isHost) broadcast(msg);
+            else if(hostConn) hostConn.send(msg);
+            
             input.value = '';
         }
 
-        /* --- MEDIA: SCREEN & AUDIO --- */
+        /* --- MEDIA (VIDEO/AUDIO) --- */
         
-        function handleIncomingCall(call) {
+        // Входящий звонок
+        function handleCall(call) {
             call.answer();
-            call.on('stream', (remoteStream) => {
-                if(remoteStream.getVideoTracks().length > 0) {
-                    addVideoCard(remoteStream, call.peer); // Экран
-                } else {
-                    playAudio(remoteStream); // Голос
-                }
-            });
+            call.on('stream', stream => addVideo(stream, call.peer));
         }
 
+        // Микрофон
         async function toggleMic() {
             const btn = document.getElementById('btnMic');
-            if (localAudioStream) {
-                localAudioStream.getTracks().forEach(t => t.stop());
-                localAudioStream = null;
-                btn.className = "control-btn disabled";
+            if (localStream && localStream.getAudioTracks().length > 0) {
+                // Выкл
+                localStream.getAudioTracks()[0].stop();
+                btn.classList.remove('active');
                 btn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-                closeAllCalls();
+                // В простой версии - сброс звонка для выключения
+                closeCalls(); 
             } else {
+                // Вкл
                 try {
-                    localAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    btn.className = "control-btn active";
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    btn.classList.add('active');
                     btn.innerHTML = '<i class="fas fa-microphone"></i>';
-                    callEveryone(localAudioStream);
-                } catch(e) { alert("Нет доступа к микрофону"); }
+                    callAll(localStream);
+                } catch(e) { alert("Ошибка микрофона"); }
             }
         }
 
+        // Экран (На телефоне может не работать, зависит от ОС, но кнопка есть)
         async function toggleScreen() {
             const btn = document.getElementById('btnScreen');
-            if (localScreenStream) {
-                stopScreenShare();
+            if (localStream && localStream.getVideoTracks().length > 0) {
+                closeCalls();
+                btn.classList.remove('active');
             } else {
                 try {
-                    // --- HIGH QUALITY SETTINGS ---
-                    localScreenStream = await navigator.mediaDevices.getDisplayMedia({ 
-                        video: { 
-                            width: { ideal: 1920, max: 3840 }, // Просим Full HD или 4K
-                            height: { ideal: 1080, max: 2160 },
-                            frameRate: { ideal: 60 } // Просим 60 FPS
-                        }, 
-                        audio: true 
+                    // Пробуем High Quality
+                    localStream = await navigator.mediaDevices.getDisplayMedia({ 
+                        video: { height: 720, frameRate: 30 } 
                     });
-                    
-                    btn.className = "control-btn active";
-                    addVideoCard(localScreenStream, "Me"); // Себе
-                    callEveryone(localScreenStream); // Другим
-                    
-                    localScreenStream.getVideoTracks()[0].onended = stopScreenShare;
-                } catch(e) { console.error(e); }
+                    btn.classList.add('active');
+                    addVideo(localStream, "Me"); // Показываем себе
+                    callAll(localStream);
+                } catch(e) { alert("Не удалось захватить экран (может не поддерживаться телефоном)"); }
             }
         }
 
-        function stopScreenShare() {
-            if(!localScreenStream) return;
-            localScreenStream.getTracks().forEach(t => t.stop());
-            localScreenStream = null;
-            document.getElementById('btnScreen').className = "control-btn disabled";
-            const myVid = document.getElementById('vid-Me');
-            if(myVid) myVid.remove();
-            checkGridEmpty();
-            closeAllCalls();
-            if(localAudioStream) callEveryone(localAudioStream); // Возвращаем голос если был
-        }
-
-        function callEveryone(stream) {
-            if (isHost) {
-                dataConnections.forEach(conn => currentCalls.push(peer.call(conn.peer, stream)));
+        function callAll(stream) {
+            if(isHost) {
+                connections.forEach(c => currentCalls.push(peer.call(c.peer, stream)));
             } else if(hostConn) {
                 currentCalls.push(peer.call(hostConn.peer, stream));
             }
         }
-
-        function closeAllCalls() {
-            currentCalls.forEach(call => call.close());
+        
+        function closeCalls() {
+            currentCalls.forEach(c => c.close());
             currentCalls = [];
+            const container = document.getElementById('videoContainer');
+            container.innerHTML = '';
+            container.classList.remove('has-video');
         }
 
-        /* --- VIDEO UI --- */
-        function addVideoCard(stream, peerId) {
-            const grid = document.getElementById('videoGrid');
-            grid.classList.add('show');
-            if(document.getElementById(`vid-${peerId}`)) return;
-
-            const card = document.createElement('div');
-            card.className = 'video-card';
-            card.id = `vid-${peerId}`;
+        function addVideo(stream, id) {
+            const container = document.getElementById('videoContainer');
+            container.classList.add('has-video');
             
-            // Двойной клик для полного экрана
-            card.ondblclick = () => toggleFullscreen(card.querySelector('video'));
+            if(container.children.length > 0) container.classList.add('multiple');
 
+            const div = document.createElement('div');
+            div.className = 'video-card';
             const vid = document.createElement('video');
             vid.srcObject = stream;
             vid.autoplay = true;
-            vid.playsInline = true;
-            if(peerId === "Me") vid.muted = true;
+            vid.playsInline = true; // ВАЖНО ДЛЯ АЙФОНА
+            if(id === "Me") vid.muted = true;
+            
+            // Двойной тап для фуллскрина
+            div.ondblclick = () => {
+                if(vid.requestFullscreen) vid.requestFullscreen();
+                else if(vid.webkitRequestFullscreen) vid.webkitRequestFullscreen();
+            };
 
-            const label = document.createElement('div');
-            label.className = 'video-label';
-            label.innerText = peerId === "Me" ? "Вы (Экран)" : "Экран собеседника";
-
-            const hint = document.createElement('div');
-            hint.className = 'fullscreen-hint';
-            hint.innerHTML = '<i class="fas fa-expand"></i><br>2 клика';
-
-            card.appendChild(vid);
-            card.appendChild(label);
-            card.appendChild(hint);
-            grid.appendChild(card);
+            div.appendChild(vid);
+            container.appendChild(div);
         }
 
-        // Логика полного экрана
-        function toggleFullscreen(videoElem) {
-            if (!document.fullscreenElement) {
-                videoElem.requestFullscreen().catch(err => {
-                    alert(`Ошибка: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        }
-
-        function playAudio(stream) {
-            const audio = new Audio();
-            audio.srcObject = stream;
-            audio.play();
-        }
-
-        function checkGridEmpty() {
-            const grid = document.getElementById('videoGrid');
-            if(grid.children.length === 0) grid.classList.remove('show');
-        }
-
-        /* --- UTILS --- */
-        function addMessageToUI(sender, text) {
-            const area = document.getElementById('messagesArea');
+        /* --- HELPERS --- */
+        function addMessage(sender, text) {
+            const chat = document.getElementById('chatArea');
+            const color = '#' + Math.floor(Math.random()*16777215).toString(16);
+            
             const div = document.createElement('div');
             div.className = 'message';
             div.innerHTML = `
-                <div class="msg-avatar" style="background: ${stringToColor(sender)}"></div>
-                <div>
-                    <div class="msg-header">
-                        <span class="msg-username">${sender}</span>
-                        <span class="msg-time">${new Date().toLocaleTimeString().slice(0,5)}</span>
-                    </div>
-                    <div class="msg-text">${text}</div>
+                <div class="avatar" style="background:${color}"></div>
+                <div class="msg-content">
+                    <div class="username">${sender}</div>
+                    <div class="text">${text}</div>
                 </div>
             `;
-            area.appendChild(div);
-            area.scrollTop = area.scrollHeight;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
         }
 
         function addSystemMsg(text) {
-            document.getElementById('messagesArea').innerHTML += `<div style="color:#72767d; font-size:12px; margin:10px 0; text-align:center;">${text}</div>`;
+            const chat = document.getElementById('chatArea');
+            chat.innerHTML += `<div style="text-align:center; color:#555; font-size:12px; margin:5px 0;">${text}</div>`;
         }
 
         function addToUserList(name) {
-            const list = document.getElementById('userList');
-            list.innerHTML += `<div style="margin-bottom:8px; display:flex; align-items:center;"><i class="fas fa-user-circle" style="margin-right:8px;"></i> ${name}</div>`;
+            document.getElementById('userList').innerHTML += `<div class="user-item"><i class="fas fa-user"></i> ${name}</div>`;
         }
 
-        function copyCode() {
+        function copyId() {
             navigator.clipboard.writeText(myId);
-            alert("Скопировано! Отправь другу.");
+            alert("Скопировано!");
         }
 
-        function stringToColor(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-            return '#' + '00000'.substring(0, 6 - (hash & 0x00FFFFFF).toString(16).toUpperCase().length) + (hash & 0x00FFFFFF).toString(16).toUpperCase();
-        }
-
-        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        // Отправка по Enter
+        document.getElementById('msgInput').addEventListener('keypress', e => {
             if(e.key === 'Enter') sendMessage();
         });
+
     </script>
 </body>
 </html>

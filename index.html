@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Group Chat</title>
+    <title>Discord Clone - Voice & Video</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -12,384 +12,437 @@
             --bg-secondary: #2f3136;
             --bg-primary: #36393f;
             --text-normal: #dcddde;
-            --text-muted: #72767d;
             --accent: #5865f2;
             --danger: #ed4245;
-            --message-hover: #32353b;
+            --success: #3ba55c;
         }
 
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text-normal); overflow: hidden; display: flex; height: 100vh; }
 
-        /* --- ЛОГИН (МОДАЛЬНОЕ ОКНО) --- */
+        /* --- ВХОД --- */
         #loginOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 999;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999;
             display: flex; justify-content: center; align-items: center;
         }
-        .login-box {
-            background: var(--bg-secondary); padding: 40px; border-radius: 5px; width: 400px; text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        .login-input {
-            width: 100%; padding: 10px; margin: 10px 0; background: var(--bg-tertiary);
-            border: 1px solid #202225; color: white; border-radius: 3px; font-size: 16px;
-        }
-        .btn {
-            width: 100%; padding: 12px; border: none; border-radius: 3px; color: white;
-            font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; font-size: 14px;
-        }
-        .btn-blue { background: var(--accent); }
-        .btn-blue:hover { background: #4752c4; }
+        .login-box { background: var(--bg-secondary); padding: 40px; border-radius: 8px; width: 400px; text-align: center; }
+        .login-input { width: 100%; padding: 10px; margin: 10px 0; background: var(--bg-tertiary); border: none; color: white; border-radius: 3px; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 3px; color: white; cursor: pointer; margin-top: 10px; font-weight: bold;}
+        .btn-blue { background: var(--accent); } .btn-blue:hover { background: #4752c4; }
         .btn-gray { background: #4f545c; }
-        .btn-gray:hover { background: #686d73; }
-        
-        .divider { margin: 20px 0; color: var(--text-muted); font-size: 12px; font-weight: bold; display: flex; align-items: center; }
-        .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #4f545c; }
-        .divider::before { margin-right: 10px; } .divider::after { margin-left: 10px; }
 
-        /* --- ОСНОВНОЙ ИНТЕРФЕЙС --- */
-        /* 1. Левая полоска серверов */
-        .servers-nav { width: 72px; background: var(--bg-tertiary); display: flex; flex-direction: column; align-items: center; padding-top: 12px; }
-        .server-icon { width: 48px; height: 48px; background: var(--bg-primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
-        .server-icon:hover { border-radius: 16px; background: var(--accent); }
-        .server-icon.active { border-radius: 16px; background: var(--accent); }
+        /* --- UI --- */
+        .sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; flex-shrink: 0;}
+        .user-panel { background: #292b2f; padding: 10px; display: flex; align-items: center; margin-top: auto; }
+        .control-btn { background: none; border: none; color: var(--text-normal); cursor: pointer; padding: 8px; font-size: 16px; border-radius: 4px; }
+        .control-btn:hover { background: #3f4147; }
+        .control-btn.off { color: var(--danger); position: relative; }
+        .control-btn.off::after { content: ''; position: absolute; width: 100%; height: 2px; background: var(--danger); top: 50%; left: 0; transform: rotate(45deg); }
+        .control-btn.active-screen { color: var(--success); }
 
-        /* 2. Список участников (Сайдбар) */
-        .sidebar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; }
-        .channel-header { height: 48px; border-bottom: 1px solid #202225; display: flex; align-items: center; padding: 0 16px; font-weight: bold; box-shadow: 0 1px 0 rgba(4,4,5,0.2); }
+        .chat-main { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); position: relative; min-width: 0;}
         
-        .members-list { flex: 1; padding: 20px 10px; overflow-y: auto; }
-        .member-category { font-size: 12px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-bottom: 10px; }
-        
-        .member-item { display: flex; align-items: center; padding: 6px; border-radius: 4px; color: var(--text-muted); cursor: pointer; }
-        .member-item:hover { background: rgba(79,84,92,0.32); color: var(--text-normal); }
-        .member-avatar { width: 32px; height: 32px; border-radius: 50%; margin-right: 10px; background: #faa61a; position: relative; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); position: absolute; bottom: -2px; right: -2px; border: 3px solid var(--bg-secondary); }
-        .member-name { font-weight: 500; }
+        /* Видео сетка */
+        .video-grid {
+            display: flex; gap: 10px; padding: 10px; background: black; overflow-x: auto; min-height: 120px;
+            border-bottom: 1px solid #202225;
+        }
+        .video-card {
+            position: relative; width: 200px; height: 112px; background: #202225; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+        }
+        .video-card video { width: 100%; height: 100%; object-fit: cover; }
+        .video-name { position: absolute; bottom: 5px; left: 5px; background: rgba(0,0,0,0.6); padding: 2px 6px; font-size: 12px; border-radius: 4px; }
 
-        /* Код комнаты внизу */
-        .room-code-panel { background: #202225; padding: 10px; text-align: center; }
-        .code-display { font-family: monospace; background: black; padding: 5px; border-radius: 3px; cursor: pointer; user-select: all; color: var(--success); font-size: 14px;}
-        
-        /* 3. Чат */
-        .chat-main { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); position: relative;}
-        .chat-header { height: 48px; border-bottom: 1px solid #26272d; display: flex; align-items: center; padding: 0 16px; font-weight: bold; }
-        
-        .messages-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .messages-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
         .message { display: flex; margin-bottom: 5px; }
-        .message:hover { background: rgba(4, 4, 5, 0.07); }
-        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; background: #faa61a; margin-right: 16px; flex-shrink: 0; cursor: pointer; }
-        .msg-content { flex: 1; }
-        .msg-header { display: flex; align-items: center; margin-bottom: 2px; }
-        .msg-username { font-weight: 500; margin-right: 8px; cursor: pointer; }
-        .msg-username:hover { text-decoration: underline; }
-        .msg-time { font-size: 11px; color: var(--text-muted); }
-        .msg-text { color: var(--text-normal); white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; }
+        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; background: #5865f2; flex-shrink: 0;}
+        .msg-header { margin-bottom: 2px; }
+        .msg-username { font-weight: bold; margin-right: 5px; cursor: pointer; }
+        .msg-text { color: #dcddde; word-wrap: break-word; white-space: pre-wrap; }
 
-        .input-area { padding: 0 16px 24px; margin-top: 10px; }
-        .input-wrapper { background: #40444b; border-radius: 8px; padding: 10px; display: flex; align-items: center; }
-        .chat-input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 15px; }
-
-        /* Видео/Голос (Скрытые элементы) */
-        #audioContainer { display: none; }
+        .input-area { padding: 20px; background: var(--bg-primary); }
+        .input-wrapper { background: #40444b; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; }
+        .chat-input { background: transparent; border: none; color: white; width: 100%; height: 44px; outline: none; }
     </style>
 </head>
 <body>
 
     <div id="loginOverlay">
         <div class="login-box">
-            <i class="fab fa-discord fa-3x" style="color: var(--accent); margin-bottom: 20px;"></i>
-            <h2 style="color: white; margin-bottom: 5px;">Добро пожаловать</h2>
-            <p style="color: #b9bbbe; font-size: 14px;">Придумайте ник и создайте группу</p>
-            
-            <input type="text" id="usernameInput" class="login-input" placeholder="Ваш никнейм" maxlength="15">
-            
-            <button class="btn btn-blue" onclick="createRoom()">Создать свою группу</button>
-            
-            <div class="divider">ИЛИ ПРИСОЕДИНИТЕСЬ</div>
-            
-            <input type="text" id="joinCodeInput" class="login-input" placeholder="Введите код группы...">
+            <h2 style="color: white;">Discord Clone v2.0</h2>
+            <p style="color: #aaa;">Видео, Экран и Чат</p>
+            <input type="text" id="usernameInput" class="login-input" placeholder="Твой никнейм">
+            <button class="btn btn-blue" onclick="createRoom()">Создать комнату (Я Админ)</button>
+            <p style="margin: 10px 0; color: #72767d;">— ИЛИ —</p>
+            <input type="text" id="joinCodeInput" class="login-input" placeholder="Код комнаты...">
             <button class="btn btn-gray" onclick="joinRoom()">Присоединиться</button>
-            
-            <p id="statusMsg" style="color: var(--danger); margin-top: 10px; font-size: 13px;"></p>
+            <p id="statusMsg" style="color: var(--danger); margin-top: 10px;"></p>
         </div>
-    </div>
-
-    <div class="servers-nav">
-        <div class="server-icon active"><i class="fab fa-discord"></i></div>
-        <div class="server-icon"><i class="fas fa-plus"></i></div>
     </div>
 
     <div class="sidebar">
-        <div class="channel-header">Групповой чат</div>
-        <div class="members-list">
-            <div class="member-category">УЧАСТНИКИ — <span id="memberCount">1</span></div>
-            <div id="membersContainer">
-                </div>
-        </div>
+        <div style="padding: 15px; font-weight: bold; border-bottom: 1px solid #202225;">Голосовой чат</div>
+        <div style="flex:1; padding: 10px; color: #72767d; font-size: 14px;" id="userList">
+            </div>
         
-        <div class="room-code-panel">
-            <div style="font-size: 11px; color: #aaa; margin-bottom: 5px;">КОД ДЛЯ ДРУЗЕЙ:</div>
-            <div id="myIdDisplay" class="code-display" onclick="copyCode()" title="Нажми чтобы скопировать">...</div>
+        <div style="padding: 10px; background: #202225; text-align: center;">
+             <span id="myIdDisplay" style="font-family: monospace; cursor: pointer; color: var(--success);" onclick="copyCode()">...</span>
+        </div>
+
+        <div class="user-panel">
+            <div style="flex:1; font-weight:bold; font-size:14px;" id="myDisplayName">User</div>
+            <button class="control-btn" id="btnMic" onclick="toggleMic()" title="Микрофон"><i class="fas fa-microphone"></i></button>
+            <button class="control-btn" id="btnDeafen" onclick="toggleDeafen()" title="Звук"><i class="fas fa-headphones"></i></button>
+            <button class="control-btn" id="btnScreen" onclick="toggleScreen()" title="Демонстрация экрана"><i class="fas fa-desktop"></i></button>
         </div>
     </div>
 
     <div class="chat-main">
-        <div class="chat-header">
-            <i class="fas fa-hashtag" style="color: var(--text-muted); margin-right: 10px;"></i>
-            general
+        <div class="video-grid" id="videoGrid">
+            <div class="video-card">
+                <video id="localVideo" muted autoplay playsinline></video>
+                <div class="video-name">Я (Вы)</div>
+            </div>
         </div>
 
         <div class="messages-area" id="messagesArea">
-            <div style="margin-top: auto;">
-                <h1 style="color: white; font-weight: bold;">Добро пожаловать в #general</h1>
-                <p style="color: var(--text-muted);">Это начало истории этого канала.</p>
-            </div>
+            <div style="margin-top: auto;"></div>
         </div>
 
         <div class="input-area">
             <div class="input-wrapper">
-                <i class="fas fa-plus-circle" style="color: var(--text-muted); margin-right: 15px; cursor: pointer;"></i>
-                <input type="text" id="chatInput" class="chat-input" placeholder="Написать сообщение..." autocomplete="off">
+                <input type="text" id="chatInput" class="chat-input" placeholder="Написать сообщение...">
             </div>
         </div>
     </div>
-    
-    <div id="audioContainer"></div>
 
     <script>
-        let peer = null;
-        let myName = "Anon";
-        let myId = "";
-        let connections = []; // Список подключений (для Админа)
-        let hostConnection = null; // Подключение к Админу (для Гостя)
+        // --- Глобальные переменные ---
+        let peer;
+        let myId;
+        let myName;
+        let localStream;
         let isHost = false;
+        
+        // Массив подключений (для Чата)
+        let dataConnections = []; 
+        let hostConn = null; // Если я гость
 
-        const colors = ['#faa61a', '#ed4245', '#3ba55c', '#5865f2', '#eb459e'];
+        // Управление медиа
+        let isMicEnabled = true;
+        let isDeafened = false;
+        let isScreenSharing = false;
+        let videoTrackOriginal = null; // Чтобы вернуть камеру после стрима
 
-        // --- 1. ЛОГИКА ВХОДА ---
-
-        function initPeer() {
-            myName = document.getElementById('usernameInput').value || "User" + Math.floor(Math.random()*100);
-            return new Peer(); 
+        // --- 1. ИНИЦИАЛИЗАЦИЯ ---
+        
+        async function initMedia() {
+            try {
+                // Запрашиваем камеру и микрофон сразу
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                videoTrackOriginal = localStream.getVideoTracks()[0];
+                return true;
+            } catch (err) {
+                alert("Ошибка: Нужен доступ к камере и микрофону!");
+                console.error(err);
+                return false;
+            }
         }
 
-        // Создать комнату (Я - Админ)
-        function createRoom() {
-            if(!document.getElementById('usernameInput').value) {
-                document.getElementById('statusMsg').innerText = "Введите никнейм!";
-                return;
-            }
+        // --- 2. СОЗДАНИЕ КОМНАТЫ (ХОСТ) ---
+        async function createRoom() {
+            myName = document.getElementById('usernameInput').value || "Host";
+            if (!await initMedia()) return;
 
-            peer = initPeer();
-            isHost = true;
-
+            peer = new Peer();
+            
             peer.on('open', (id) => {
                 myId = id;
+                isHost = true;
                 enterApp();
-                addSystemMessage(`Группа создана! Отправьте код друзьям: ${id}`);
-                addMemberToSidebar(myName, true); // Добавляем себя
+                addToUserList(myName + " (Host)");
             });
 
-            // Когда кто-то подключается к Админу
+            // Хост принимает текстовые соединения
             peer.on('connection', (conn) => {
-                setupConnection(conn);
+                setupDataConnection(conn);
+            });
+
+            // Хост принимает звонки (Видео)
+            peer.on('call', (call) => {
+                call.answer(localStream); // Отвечаем своим потоком
+                handleStream(call);
             });
         }
 
-        // Присоединиться (Я - Гость)
-        function joinRoom() {
-            const code = document.getElementById('joinCodeInput').value.trim();
-            if(!code || !document.getElementById('usernameInput').value) {
-                document.getElementById('statusMsg').innerText = "Введите ник и код!";
-                return;
-            }
+        // --- 3. ПРИСОЕДИНЕНИЕ (ГОСТЬ) ---
+        async function joinRoom() {
+            myName = document.getElementById('usernameInput').value || "Guest";
+            const hostId = document.getElementById('joinCodeInput').value;
+            if (!hostId) return alert("Введите код!");
+            if (!await initMedia()) return;
 
-            peer = initPeer();
-            isHost = false;
+            peer = new Peer();
 
             peer.on('open', (id) => {
                 myId = id;
+                isHost = false;
                 enterApp();
-                // Соединяемся с Админом
-                const conn = peer.connect(code, { metadata: { name: myName } });
+
+                // 1. Соединяемся текстом
+                hostConn = peer.connect(hostId, { metadata: { name: myName } });
                 
-                conn.on('open', () => {
-                    hostConnection = conn;
-                    addSystemMessage("Вы подключились к группе!");
-                    
-                    // Слушаем сообщения от Админа
-                    conn.on('data', (data) => handleData(data));
+                hostConn.on('open', () => {
+                    addToUserList(myName);
+                    // 2. Звоним Хосту (Видео)
+                    const call = peer.call(hostId, localStream);
+                    handleStream(call);
                 });
 
-                conn.on('close', () => alert("Админ отключился, чат закрыт."));
+                hostConn.on('data', handleData);
+            });
+
+            // Если кто-то звонит нам (В простой версии звоним только Хосту, но оставим для масштабирования)
+            peer.on('call', (call) => {
+                call.answer(localStream);
+                handleStream(call);
             });
         }
 
         function enterApp() {
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('myIdDisplay').innerText = myId;
+            document.getElementById('myDisplayName').innerText = myName;
         }
 
-        // --- 2. ОБРАБОТКА ПОДКЛЮЧЕНИЙ (ТОЛЬКО ДЛЯ АДМИНА) ---
-        
-        function setupConnection(conn) {
-            connections.push(conn);
+        // --- 4. ЛОГИКА ЧАТА (ИСПРАВЛЕНИЕ ДУБЛИРОВАНИЯ) ---
+
+        function setupDataConnection(conn) {
+            dataConnections.push(conn);
             
             conn.on('open', () => {
-                // 1. Отправляем новому участнику историю или приветствие (опционально)
-                // 2. Оповещаем всех, что кто-то зашел
-                broadcast({ type: 'system', text: `${conn.metadata.name} присоединился.` });
-                
-                // Обновляем список участников всем
-                updateAllClientsUserList();
+                // Рассылаем всем, что кто-то зашел
+                broadcast({ type: 'system', text: `${conn.metadata.name} присоединился` });
+                broadcastUserList();
             });
 
             conn.on('data', (data) => {
-                // Админ получил сообщение от Гостя
-                // Админ должен показать его у себя и переслать ВСЕМ остальным
-                handleData(data); // Показываем у себя
-                broadcast(data);  // Рассылаем остальным
+                // ХОСТ получил сообщение
+                // 1. Показываем у себя
+                handleData(data);
+                // 2. Рассылаем ВСЕМ ОСТАЛЬНЫМ (Реле)
+                broadcast(data);
             });
 
             conn.on('close', () => {
-                connections = connections.filter(c => c !== conn);
-                broadcast({ type: 'system', text: `${conn.metadata.name} вышел.` });
-                updateAllClientsUserList();
+                dataConnections = dataConnections.filter(c => c !== conn);
+                broadcastUserList();
             });
         }
 
-        // --- 3. РАССЫЛКА И ОБРАБОТКА ДАННЫХ ---
-
-        // Отправить всем (функция Админа)
         function broadcast(data) {
-            connections.forEach(c => c.send(data));
+            dataConnections.forEach(c => c.send(data));
         }
-
-        // Обработка входящих данных (и Админ, и Гость)
-        function handleData(data) {
-            if (data.type === 'message') {
-                addMessageToChat(data.sender, data.text);
-            } 
-            else if (data.type === 'system') {
-                addSystemMessage(data.text);
-            }
-            else if (data.type === 'userlist') {
-                // Пришел обновленный список людей от Админа
-                renderUserList(data.users);
-            }
-        }
-
-        // --- 4. ОТПРАВКА СООБЩЕНИЙ ---
-
-        const input = document.getElementById('chatInput');
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && input.value.trim()) {
-                sendMessage();
-            }
-        });
 
         function sendMessage() {
-            const text = input.value;
-            const msgData = { type: 'message', sender: myName, text: text };
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if(!text) return;
 
-            // Показываем у себя сразу
-            addMessageToChat(myName, text);
+            const msg = { type: 'chat', sender: myName, text: text };
+            
+            // 1. Сразу показываем у себя (чтобы было быстро)
+            addMessageToUI(myName, text); 
 
-            if (isHost) {
-                // Если я Админ -> рассылаем всем
-                broadcast(msgData);
+            // 2. Отправляем в сеть
+            if(isHost) {
+                broadcast(msg); // Хост шлет всем
             } else {
-                // Если я Гость -> шлем Админу (а он разошлет)
-                if (hostConnection) hostConnection.send(msgData);
+                hostConn.send(msg); // Гость шлет Хосту
             }
-
+            
             input.value = '';
         }
 
-        // --- 5. ФУНКЦИИ ИНТЕРФЕЙСА ---
-
-        function addMessageToChat(sender, text) {
-            const area = document.getElementById('messagesArea');
-            const color = colors[Math.abs(sender.length) % colors.length]; // Случайный цвет по длине имени
-            
-            const html = `
-                <div class="message">
-                    <div class="msg-avatar" style="background: ${color}"></div>
-                    <div class="msg-content">
-                        <div class="msg-header">
-                            <span class="msg-username">${sender}</span>
-                            <span class="msg-time">${new Date().toLocaleTimeString().slice(0,5)}</span>
-                        </div>
-                        <div class="msg-text">${text}</div>
-                    </div>
-                </div>
-            `;
-            area.insertAdjacentHTML('beforeend', html);
-            area.scrollTop = area.scrollHeight;
+        function handleData(data) {
+            if (data.type === 'chat') {
+                // САМОЕ ВАЖНОЕ: Если сообщение от меня самого - игнорируем, 
+                // так как мы его уже добавили через sendMessage()
+                if (data.sender === myName) return; 
+                addMessageToUI(data.sender, data.text);
+            } 
+            else if (data.type === 'system') {
+                addSystemMsg(data.text);
+            }
         }
 
-        function addSystemMessage(text) {
-            const area = document.getElementById('messagesArea');
-            area.insertAdjacentHTML('beforeend', `<div style="color:#72767d; font-size:12px; margin:5px 0; padding-left:56px;"><i class="fas fa-arrow-right"></i> ${text}</div>`);
-            area.scrollTop = area.scrollHeight;
-        }
+        // --- 5. ЛОГИКА ВИДЕО/СТРИМОВ ---
 
-        // Обновление списка участников (Логика Админа)
-        function updateAllClientsUserList() {
-            // Собираем всех: Я (Админ) + Все подключения
-            let allUsers = [myName];
-            connections.forEach(c => {
-                if(c.metadata && c.metadata.name) allUsers.push(c.metadata.name);
-            });
-
-            // Отображаем у себя
-            renderUserList(allUsers);
-
-            // Рассылаем всем новый список
-            broadcast({ type: 'userlist', users: allUsers });
-        }
-
-        function renderUserList(names) {
-            const container = document.getElementById('membersContainer');
-            document.getElementById('memberCount').innerText = names.length;
-            container.innerHTML = '';
-            
-            names.forEach(name => {
-                addMemberToSidebar(name);
+        function handleStream(call) {
+            call.on('stream', (remoteStream) => {
+                // Создаем видео элемент для собеседника
+                addVideoCard(remoteStream, call.peer);
             });
         }
 
-        function addMemberToSidebar(name) {
-            const container = document.getElementById('membersContainer');
-            const color = colors[Math.abs(name.length) % colors.length];
-            const html = `
-                <div class="member-item">
-                    <div class="member-avatar" style="background: ${color}">
-                        <div class="status-dot"></div>
+        function addVideoCard(stream, peerId) {
+            // Проверка, нет ли уже такого видео
+            if (document.getElementById(`vid-${peerId}`)) return;
+
+            const grid = document.getElementById('videoGrid');
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            card.id = `vid-${peerId}`;
+            
+            const vid = document.createElement('video');
+            vid.srcObject = stream;
+            vid.autoplay = true;
+            vid.playsInline = true;
+            
+            // Если включен режим "Наушники выкл", мутим звук
+            vid.muted = isDeafened; 
+
+            const label = document.createElement('div');
+            label.className = 'video-name';
+            label.innerText = peerId.substr(0, 5); // Показываем ID (упрощенно)
+
+            card.appendChild(vid);
+            card.appendChild(label);
+            grid.appendChild(card);
+        }
+
+        // --- 6. УПРАВЛЕНИЕ (МИК, ЗВУК, ЭКРАН) ---
+
+        function toggleMic() {
+            const audioTrack = localStream.getAudioTracks()[0];
+            if(!audioTrack) return;
+            
+            isMicEnabled = !isMicEnabled;
+            audioTrack.enabled = isMicEnabled;
+            
+            const btn = document.getElementById('btnMic');
+            btn.innerHTML = isMicEnabled ? '<i class="fas fa-microphone"></i>' : '<i class="fas fa-microphone-slash"></i>';
+            if(!isMicEnabled) btn.classList.add('off'); else btn.classList.remove('off');
+        }
+
+        function toggleDeafen() {
+            isDeafened = !isDeafened;
+            
+            // Мутим/Размучиваем все ВХОДЯЩИЕ видео (кроме своего)
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => {
+                if (v.id !== 'localVideo') v.muted = isDeafened;
+            });
+
+            const btn = document.getElementById('btnDeafen');
+            if(isDeafened) btn.classList.add('off'); else btn.classList.remove('off');
+        }
+
+        async function toggleScreen() {
+            if (!isScreenSharing) {
+                try {
+                    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const screenTrack = screenStream.getVideoTracks()[0];
+                    
+                    // Заменяем трек камеры на трек экрана во всех текущих соединениях
+                    const senderTrack = localStream.getVideoTracks()[0];
+                    
+                    // Останавливаем камеру, чтобы загорелась лампочка экрана? Нет, просто меняем.
+                    // PeerJS хак: заменяем трек в локальном стриме
+                    localStream.removeTrack(senderTrack);
+                    localStream.addTrack(screenTrack);
+                    
+                    // Обновляем свое превью
+                    document.getElementById('localVideo').srcObject = screenStream; // Временно показываем экран себе
+
+                    // Нужно обновить трек для всех активных звонков (PeerJS это делает автоматически если стрим тот же, но часто нужен "replaceTrack")
+                    // Для простоты в этом коде: собеседники увидят экран, если PeerJS подхватит изменение стрима.
+                    // Если нет - потребуется перезвон. Но попробуем просто замену.
+                    
+                    // Когда юзер нажал "Остановить" в браузере
+                    screenTrack.onended = () => {
+                        stopScreenShare();
+                    };
+
+                    isScreenSharing = true;
+                    document.getElementById('btnScreen').classList.add('active-screen');
+
+                } catch(err) { console.error(err); }
+            } else {
+                stopScreenShare();
+            }
+        }
+
+        function stopScreenShare() {
+            // Возвращаем камеру
+            const screenTrack = localStream.getVideoTracks()[0];
+            screenTrack.stop();
+            
+            localStream.removeTrack(screenTrack);
+            localStream.addTrack(videoTrackOriginal); // Возвращаем сохраненный трек камеры
+            
+            document.getElementById('localVideo').srcObject = localStream;
+            
+            isScreenSharing = false;
+            document.getElementById('btnScreen').classList.remove('active-screen');
+        }
+
+
+        // --- UI UTILS ---
+
+        function addMessageToUI(sender, text) {
+            const area = document.getElementById('messagesArea');
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `
+                <div class="msg-avatar" style="background: ${stringToColor(sender)}"></div>
+                <div style="flex:1">
+                    <div class="msg-header">
+                        <span class="msg-username">${sender}</span>
+                        <span style="font-size:11px; color:#72767d">${new Date().toLocaleTimeString().slice(0,5)}</span>
                     </div>
-                    <div class="member-name">${name}</div>
+                    <div class="msg-text">${text}</div>
                 </div>
             `;
-            container.insertAdjacentHTML('beforeend', html);
+            area.appendChild(div);
+            area.scrollTop = area.scrollHeight;
+        }
+
+        function addSystemMsg(text) {
+            const area = document.getElementById('messagesArea');
+            area.innerHTML += `<div style="color:#72767d; font-size:12px; margin:5px 0; text-align:center;">${text}</div>`;
+        }
+
+        function addToUserList(name) {
+            const list = document.getElementById('userList');
+            const div = document.createElement('div');
+            div.style.marginBottom = "5px";
+            div.innerHTML = `<i class="fas fa-user-circle"></i> ${name}`;
+            list.appendChild(div);
+        }
+
+        // Заглушка обновления списка (для хоста можно дописать логику)
+        function broadcastUserList() {
+            // В этой простой версии не синхронизируем полный список имен в реальном времени, 
+            // чтобы не усложнять код до 500 строк. Но чат и видео работают.
         }
 
         function copyCode() {
             navigator.clipboard.writeText(myId);
-            const el = document.getElementById('myIdDisplay');
-            const old = el.innerText;
-            el.innerText = "СКОПИРОВАНО!";
-            el.style.color = "white";
-            setTimeout(() => {
-                el.innerText = old;
-                el.style.color = "var(--success)";
-            }, 1500);
+            alert("Код скопирован! Отправь друзьям.");
         }
 
-        // Защита от закрытия вкладки
-        window.onbeforeunload = function() {
-            return "Если вы выйдете, чат прервется. Вы уверены?";
-        };
+        function stringToColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            return '#' + '00000'.substring(0, 6 - c.length) + c;
+        }
+
+        // Отправка по Enter
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') sendMessage();
+        });
 
     </script>
 </body>

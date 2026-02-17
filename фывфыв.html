@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Clone - WebRTC Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #202225;
+            --bg-channels: #2f3136;
+            --bg-chat: #36393f;
+            --text-main: #dcddde;
+            --text-muted: #72767d;
+            --accent: #5865f2;
+            --danger: #ed4245;
+            --success: #3ba55c;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background-color: var(--bg-chat);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* 1. Server List (Leftmost) */
+        .servers {
+            width: 72px;
+            background-color: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 12px;
+        }
+
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            background-color: var(--bg-chat);
+            border-radius: 50%;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .server-icon:hover { border-radius: 16px; background-color: var(--accent); }
+        .server-icon.active { border-radius: 16px; background-color: var(--accent); }
+
+        /* 2. Channel List */
+        .sidebar {
+            width: 240px;
+            background-color: var(--bg-channels);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .channel-header {
+            height: 48px;
+            border-bottom: 1px solid #202225;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            box-shadow: 0 1px 0 rgba(4,4,5,0.2);
+        }
+
+        .channel-list { padding: 10px 8px; flex: 1; }
+        .channel-item {
+            padding: 6px 8px;
+            margin-bottom: 2px;
+            border-radius: 4px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .channel-item:hover { background-color: rgba(79,84,92,0.16); color: var(--text-main); }
+        .channel-item i { margin-right: 6px; font-size: 0.9em; }
+
+        /* User Area (Bottom of sidebar) */
+        .user-area {
+            background-color: #292b2f;
+            height: 52px;
+            padding: 0 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info { display: flex; align-items: center; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #faa61a; margin-right: 8px; position: relative;}
+        .status-dot {
+            width: 10px; height: 10px; background: var(--success);
+            border-radius: 50%; position: absolute; bottom: -2px; right: -2px; border: 2px solid #292b2f;
+        }
+        .username { font-size: 14px; font-weight: 600; }
+        .user-tag { font-size: 12px; color: var(--text-muted); }
+
+        .user-controls button {
+            background: none; border: none; color: var(--text-main);
+            padding: 8px; cursor: pointer; border-radius: 4px;
+        }
+        .user-controls button:hover { background-color: rgba(79,84,92,0.32); }
+        
+        /* Кнопка микрофона в активном/выключенном состоянии */
+        .btn-mic-off { color: var(--danger) !important; position: relative; }
+        .btn-mic-off::after {
+            content: ''; position: absolute; width: 100%; height: 2px;
+            background: var(--danger); top: 50%; left: 0; transform: rotate(45deg);
+        }
+
+        /* 3. Main Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-chat);
+        }
+
+        .chat-header {
+            height: 48px;
+            border-bottom: 1px solid #26272d;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            box-shadow: 0 1px 0 rgba(4,4,5,0.06);
+        }
+
+        .chat-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Video Container */
+        .video-container {
+            background-color: #000;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 16/9;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stream-controls {
+            padding: 20px;
+            background: #2f3136;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .discord-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .discord-btn:hover { background-color: #4752c4; }
+        .discord-btn.danger { background-color: var(--danger); }
+        .discord-btn.danger:hover { background-color: #c03537; }
+
+    </style>
+</head>
+<body>
+
+    <div class="servers">
+        <div class="server-icon active"><i class="fab fa-discord"></i></div>
+        <div class="server-icon"><i class="fas fa-plus"></i></div>
+        <div class="server-icon"><i class="fas fa-compass"></i></div>
+    </div>
+
+    <div class="sidebar">
+        <div class="channel-header">Dev Server</div>
+        
+        <div class="channel-list">
+            <div class="channel-item"><i class="fas fa-hashtag"></i> general</div>
+            <div class="channel-item"><i class="fas fa-hashtag"></i> code-help</div>
+            <br>
+            <div style="padding-left:8px; font-size:12px; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">VOICE CHANNELS</div>
+            <div class="channel-item" style="background: rgba(79,84,92,0.32); color: white;">
+                <i class="fas fa-volume-up"></i> General Voice
+            </div>
+        </div>
+
+        <div class="user-area">
+            <div class="user-info">
+                <div class="avatar"><div class="status-dot"></div></div>
+                <div>
+                    <div class="username">User</div>
+                    <div class="user-tag">#1234</div>
+                </div>
+            </div>
+            <div class="user-controls">
+                <button id="micToggleBtn" onclick="toggleMic()" title="Вкл/Выкл микрофон">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button><i class="fas fa-headphones"></i></button>
+                <button><i class="fas fa-cog"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header">
+            <span style="font-size: 20px; margin-right: 10px;">#</span>
+            <b>General Voice</b>
+        </div>
+
+        <div class="chat-content">
+            <div class="video-container" id="videoContainer">
+                <div class="video-placeholder" id="videoPlaceholder">
+                    <i class="fas fa-desktop" style="font-size: 48px; margin-bottom: 10px;"></i>
+                    <span>Демонстрация экрана не запущена</span>
+                </div>
+                <video id="screenVideo" autoplay playsinline style="display: none;"></video>
+            </div>
+
+            <div class="stream-controls">
+                <div style="flex: 1;">
+                    <h3>Панель управления стримом</h3>
+                    <p style="color: var(--text-muted); font-size: 14px;" id="statusText">Микрофон: Включен | Экран: Выкл</p>
+                </div>
+                
+                <button class="discord-btn" id="shareBtn" onclick="toggleScreenShare()">
+                    Демонстрация экрана
+                </button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <p style="color: var(--text-muted); margin-bottom: 5px;">Уровень микрофона:</p>
+                <div style="width: 300px; height: 6px; background: #202225; border-radius: 3px; overflow: hidden;">
+                    <div id="micLevel" style="width: 0%; height: 100%; background: var(--success); transition: width 0.1s;"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let localStream = null;      // Аудио поток (микрофон)
+        let screenStream = null;     // Видео поток (экран)
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let isMicMuted = false;
+
+        // Элементы DOM
+        const micBtn = document.getElementById('micToggleBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const screenVideo = document.getElementById('screenVideo');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const statusText = document.getElementById('statusText');
+        const micLevelBar = document.getElementById('micLevel');
+
+        // 1. Инициализация аудио при загрузке (запрашиваем доступ)
+        async function initAudio() {
+            try {
+                // Запрашиваем доступ только к аудио
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Настройка анализатора звука для визуализации
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(localStream);
+                microphone.connect(analyser);
+                analyser.fftSize = 256;
+                
+                updateStatus();
+                visualizeMic();
+                console.log("Микрофон подключен");
+            } catch (err) {
+                console.error("Ошибка доступа к микрофону:", err);
+                statusText.innerText = "Ошибка: Нет доступа к микрофону";
+            }
+        }
+
+        // 2. Функция переключения микрофона (Mute/Unmute)
+        function toggleMic() {
+            if (!localStream) {
+                initAudio(); // Попытка инициализации, если еще не было
+                return;
+            }
+
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                isMicMuted = !isMicMuted;
+                audioTrack.enabled = !isMicMuted; // WebRTC способ выключить звук
+                
+                // Визуальное обновление кнопки
+                if (isMicMuted) {
+                    micBtn.classList.add('btn-mic-off');
+                    micBtn.innerHTML = '<i class="fas fa-microphone-slash"></i>';
+                } else {
+                    micBtn.classList.remove('btn-mic-off');
+                    micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                }
+                updateStatus();
+            }
+        }
+
+        // 3. Функция демонстрации экрана
+        async function toggleScreenShare() {
+            if (screenStream) {
+                // Если стрим уже идет - останавливаем
+                stopScreenShare();
+            } else {
+                try {
+                    // API для захвата экрана
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+                        video: true, 
+                        audio: true // Захват системных звуков
+                    });
+                    
+                    screenVideo.srcObject = screenStream;
+                    screenVideo.style.display = 'block';
+                    videoPlaceholder.style.display = 'none';
+                    
+                    shareBtn.innerText = "Остановить стрим";
+                    shareBtn.classList.add('danger');
+                    
+                    // Слушатель на случай, если пользователь нажмет "Остановить" в самом браузере
+                    screenStream.getVideoTracks()[0].onended = function () {
+                        stopScreenShare();
+                    };
+
+                    updateStatus();
+
+                } catch (err) {
+                    console.error("Ошибка захвата экрана:", err);
+                }
+            }
+        }
+
+        function stopScreenShare() {
+            if (screenStream) {
+                let tracks = screenStream.getTracks();
+                tracks.forEach(track => track.stop());
+                screenStream = null;
+            }
+            
+            screenVideo.srcObject = null;
+            screenVideo.style.display = 'none';
+            videoPlaceholder.style.display = 'flex';
+            
+            shareBtn.innerText = "Демонстрация экрана";
+            shareBtn.classList.remove('danger');
+            updateStatus();
+        }
+
+        // 4. Обновление текстового статуса
+        function updateStatus() {
+            const micStatus = isMicMuted ? "Выключен" : "Включен";
+            const screenStatus = screenStream ? "Идет трансляция" : "Выкл";
+            statusText.innerText = `Микрофон: ${micStatus} | Экран: ${screenStatus}`;
+        }
+
+        // 5. Визуализация уровня громкости (зеленая полоска)
+        function visualizeMic() {
+            if (!analyser) return;
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            function draw() {
+                requestAnimationFrame(draw);
+                if (isMicMuted) {
+                    micLevelBar.style.width = '0%';
+                    return;
+                }
+
+                analyser.getByteFrequencyData(dataArray);
+                // Вычисляем среднюю громкость
+                let sum = 0;
+                for(let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                let average = sum / dataArray.length;
+                
+                // Усиливаем значение для видимости (average обычно низкий)
+                let width = Math.min(100, average * 2.5);
+                micLevelBar.style.width = width + '%';
+            }
+            draw();
+        }
+
+        // Запуск при старте (нужен клик пользователя для аудио в некоторых браузерах, но попробуем сразу)
+        window.onload = () => {
+            // Браузеры требуют взаимодействия пользователя перед запуском аудио
+            // Поэтому инициализация может произойти при первом клике, но мы вызовем запрос прав
+            setTimeout(initAudio, 1000);
+        };
+
+    </script>
+</body>
+</html>

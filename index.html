@@ -2,642 +2,477 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Discord Ultimate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Discord: Friends & Tags</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-tertiary: #202225; /* Полоска серверов */
-            --bg-secondary: #2f3136; /* Список каналов/друзей */
-            --bg-primary: #36393f;   /* Чат */
-            --header: #36393f;       /* Шапка */
+            --bg-tertiary: #202225;
+            --bg-secondary: #2f3136;
+            --bg-primary: #36393f;
+            --bg-friends: #36393f;
+            --header: #36393f;
             --accent: #5865f2;
-            --text: #dcddde;
-            --hover: #4f545c;
+            --success: #3ba55c;
+            --text-header: #8e9297;
+            --text-normal: #dcddde;
+            --hover: #393c43;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text); height: 100dvh; display: flex; overflow: hidden; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-primary); color: var(--text-normal); height: 100vh; display: flex; overflow: hidden; }
 
-        /* --- 1. LEFT RAIL (SERVERS) --- */
+        /* --- 1. СЕРВЕРА (СЛЕВА) --- */
         .server-rail {
-            width: 72px; background: var(--bg-tertiary); display: flex; flex-direction: column; align-items: center; padding-top: 12px; flex-shrink: 0; z-index: 20;
-            overflow-y: auto; scrollbar-width: none;
+            width: 72px; background: var(--bg-tertiary); display: flex; flex-direction: column; align-items: center; padding-top: 12px; flex-shrink: 0;
         }
         .server-icon {
             width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary); 
             display: flex; justify-content: center; align-items: center; margin-bottom: 8px; cursor: pointer; transition: 0.2s; position: relative;
-            color: var(--text); font-size: 20px;
+            color: var(--text-normal); font-size: 20px;
         }
         .server-icon:hover, .server-icon.active { border-radius: 16px; background: var(--accent); color: white; }
+        .server-icon.home.active { background: #5865f2; }
         .separator { width: 32px; height: 2px; background: var(--bg-secondary); margin: 5px 0; }
-        
-        /* Уведомление (белая точка слева) */
-        .server-icon.active::before {
-            content: ''; position: absolute; left: -15px; top: 10px; height: 28px; width: 4px; background: white; border-radius: 0 4px 4px 0;
-        }
 
-        /* --- 2. SIDEBAR (FRIENDS / CHANNELS) --- */
+        /* --- 2. САЙДБАР (ЛС) --- */
         .sidebar {
             width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; flex-shrink: 0;
-            border-right: 1px solid #222; transition: transform 0.3s;
         }
-        .sidebar-header {
-            height: 48px; border-bottom: 1px solid #202225; display: flex; align-items: center; padding: 0 16px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
+        .search-bar { height: 48px; border-bottom: 1px solid #202225; padding: 10px; display: flex; align-items: center; justify-content: center; }
+        .search-btn { background: #202225; border: none; color: #72767d; width: 100%; padding: 5px; border-radius: 4px; text-align: left; font-size: 13px; }
         
-        /* Список друзей */
-        .nav-list { flex: 1; padding: 10px; overflow-y: auto; }
-        .nav-item {
-            display: flex; align-items: center; padding: 8px; border-radius: 4px; cursor: pointer; color: #8e9297; margin-bottom: 2px;
-        }
-        .nav-item:hover, .nav-item.selected { background: rgba(79,84,92,0.32); color: white; }
-        .nav-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); margin-right: 10px; display: flex; justify-content: center; align-items: center; font-size: 12px; color: white;}
+        .dm-list { flex: 1; padding: 10px; overflow-y: auto; }
+        .dm-header { font-size: 12px; font-weight: bold; color: #8e9297; margin-bottom: 10px; padding-left: 5px; text-transform: uppercase; }
         
-        /* User Panel (Bottom) */
+        .dm-item {
+            display: flex; align-items: center; padding: 10px; border-radius: 4px; cursor: pointer; color: #8e9297; margin-bottom: 2px;
+        }
+        .dm-item:hover, .dm-item.selected { background: var(--hover); color: white; }
+        .dm-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); margin-right: 10px; flex-shrink: 0; }
+        .dm-info { overflow: hidden; }
+        .dm-name { font-weight: 500; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dm-tag { font-size: 11px; color: #b9bbbe; }
+
+        /* Панель пользователя (внизу) */
         .user-panel {
-            background: #292b2f; padding: 10px; display: flex; align-items: center; justify-content: space-between;
+            background: #292b2f; padding: 8px; display: flex; align-items: center;
         }
-        .my-info { font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
-        .panel-btn { background: none; border: none; color: white; cursor: pointer; padding: 5px; }
+        .my-avatar { width: 32px; height: 32px; border-radius: 50%; background: #faa61a; margin-right: 8px; position: relative; }
+        /* Зеленая точка (Онлайн) */
+        .status-dot { width: 10px; height: 10px; background: var(--success); border-radius: 50%; position: absolute; bottom: -2px; right: -2px; border: 2px solid #292b2f; }
+        
+        .my-info { flex: 1; font-size: 13px; font-weight: bold; line-height: 1.1; }
+        .my-discriminator { font-size: 11px; color: #b9bbbe; font-weight: normal;}
+        
+        .panel-icons { display: flex; }
+        .panel-btn { background: none; border: none; color: white; cursor: pointer; padding: 6px; border-radius: 4px; }
+        .panel-btn:hover { background: #3f4147; }
 
-        /* --- 3. MAIN CONTENT (CHAT) --- */
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); min-width: 0; position: relative; }
-        
-        /* Header */
-        .chat-header {
-            height: 48px; border-bottom: 1px solid #26272d; display: flex; align-items: center; padding: 0 16px; justify-content: space-between;
+        /* --- 3. MAIN STAGE (TAB SYSTEM) --- */
+        .main-stage { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); min-width: 0; }
+
+        /* Вкладка ДРУЗЬЯ */
+        #friendsTab { display: flex; flex-direction: column; height: 100%; }
+        .friends-header {
+            height: 48px; border-bottom: 1px solid #26272d; display: flex; align-items: center; padding: 0 20px;
         }
-        .chat-title { font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .friends-icon { margin-right: 10px; color: #72767d; }
+        .top-tab { margin-right: 20px; font-weight: bold; cursor: pointer; color: #b9bbbe; }
+        .top-tab:hover { color: #dcddde; }
+        .top-tab.active { color: white; }
+        .add-friend-btn {
+            background: var(--success); color: white; padding: 2px 8px; border-radius: 3px; font-size: 14px; cursor: pointer;
+        }
         
-        /* Messages */
-        .messages-wrapper { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .message { display: flex; gap: 10px; }
-        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; background: gray; flex-shrink: 0; }
-        .msg-meta { display: flex; align-items: baseline; gap: 8px; }
-        .msg-username { font-weight: bold; color: white; cursor: pointer; }
+        .friends-content { padding: 30px; flex: 1; }
+        .add-friend-box { 
+            background: transparent; border: 1px solid #202225; padding: 20px; border-radius: 8px;
+        }
+        .friend-input {
+            width: 100%; background: #202225; border: 1px solid black; padding: 12px; color: white; border-radius: 4px; margin-top: 10px; outline: none;
+        }
+        .friend-input:focus { border-color: var(--accent); }
+        
+        /* Вкладка ЧАТ */
+        #chatTab { display: none; flex-direction: column; height: 100%; }
+        .chat-header { height: 48px; border-bottom: 1px solid #26272d; display: flex; align-items: center; padding: 0 16px; font-weight: bold; }
+        .messages-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .message { display: flex; gap: 15px; }
+        .msg-avatar { width: 40px; height: 40px; border-radius: 50%; background: gray; flex-shrink: 0; cursor: pointer; }
+        .msg-header { display: flex; align-items: baseline; gap: 5px; }
+        .msg-username { font-weight: 500; color: white; }
         .msg-time { font-size: 11px; color: #72767d; }
-        .msg-content { color: #dcddde; line-height: 1.4; word-wrap: break-word; }
-
-        /* Input */
+        .msg-text { color: #dcddde; line-height: 1.4; }
+        
         .input-area { padding: 20px; }
-        .input-box {
-            background: #40444b; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; height: 44px;
-        }
+        .chat-input-box { background: #40444b; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; height: 44px; }
         .chat-input { background: transparent; border: none; color: white; width: 100%; outline: none; }
 
-        /* --- VIDEO / SCREENSHARE --- */
-        #videoContainer {
-            background: black; height: 0; transition: height 0.3s; display: flex; overflow-x: auto; flex-shrink: 0;
+        /* ВХОД (MODAL) */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #36393f; z-index: 999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-        #videoContainer.active { height: 200px; border-bottom: 1px solid #222; }
-        .video-card { min-width: 300px; height: 100%; position: relative; border-right: 1px solid #333; }
-        video { width: 100%; height: 100%; object-fit: contain; }
-
-        /* --- MODALS --- */
-        .modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .modal-box { background: var(--bg-primary); padding: 30px; border-radius: 8px; width: 400px; text-align: center; }
-        .modal-input { width: 100%; padding: 10px; margin: 10px 0; background: #202225; border: none; color: white; border-radius: 4px; }
-        .btn { width: 100%; padding: 10px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-sec { background: #4f545c; margin-top: 10px; }
-
-        /* --- MOBILE --- */
-        @media (max-width: 768px) {
-            .server-rail { display: none; } /* На телефоне спрячем сервера для простоты */
-            .sidebar { width: 100%; position: absolute; height: 100%; z-index: 50; }
-            .sidebar.hidden { transform: translateX(-100%); }
-            .chat-header .burger { display: block; }
-        }
-        .burger { display: none; color: white; font-size: 20px; cursor: pointer; margin-right: 15px; }
+        .login-inp { padding: 10px; width: 300px; margin-bottom: 10px; border-radius: 3px; border: none; }
+        .login-btn { padding: 10px 20px; background: var(--accent); color: white; border: none; border-radius: 3px; cursor: pointer; }
 
     </style>
 </head>
 <body>
 
-    <div id="loginModal" class="modal">
-        <div class="modal-box">
-            <i class="fab fa-discord fa-3x" style="color: var(--accent); margin-bottom: 15px;"></i>
-            <h3>Добро пожаловать</h3>
-            <input type="text" id="myNick" class="modal-input" placeholder="Ваш никнейм">
-            <button class="btn" onclick="initApp()">Войти</button>
-        </div>
-    </div>
-
-    <div id="friendModal" class="modal" style="display: none;">
-        <div class="modal-box">
-            <h3>Добавить друга</h3>
-            <p style="font-size: 12px; color: #aaa;">Вставьте ID друга (он должен быть онлайн)</p>
-            <input type="text" id="friendIdInput" class="modal-input" placeholder="ID Друга...">
-            <input type="text" id="friendNameInput" class="modal-input" placeholder="Имя Друга (для себя)">
-            <button class="btn" onclick="addFriend()">Добавить</button>
-            <button class="btn btn-sec" onclick="closeModals()">Отмена</button>
-        </div>
-    </div>
-
-    <div id="joinModal" class="modal" style="display: none;">
-        <div class="modal-box">
-            <h3>Вступить в Группу</h3>
-            <input type="text" id="groupIdInput" class="modal-input" placeholder="ID Группы (Host ID)">
-            <button class="btn" onclick="joinGroup()">Вступить</button>
-            <button class="btn btn-sec" onclick="closeModals()">Отмена</button>
-        </div>
+    <div id="loginOverlay">
+        <i class="fab fa-discord fa-3x" style="color: #5865f2; margin-bottom: 20px;"></i>
+        <h2 style="color: white;">Придумайте Ник</h2>
+        <input type="text" id="nicknameInput" class="login-inp" placeholder="Например: SuperGamer">
+        <button class="login-btn" onclick="startApp()">Войти</button>
     </div>
 
     <div class="server-rail">
-        <div class="server-icon active" onclick="switchContext('home')" id="homeBtn" title="Личные сообщения">
+        <div class="server-icon home active" onclick="showFriendsTab()" title="Главная">
             <i class="fab fa-discord"></i>
         </div>
         <div class="separator"></div>
-        <div id="serverList"></div>
-        
-        <div class="server-icon" style="background: #3ba55c; color: white;" onclick="createGroup()" title="Создать Группу">
-            <i class="fas fa-plus"></i>
+        <div class="server-icon" style="font-size: 12px;">DEV</div>
+    </div>
+
+    <div class="sidebar">
+        <div class="search-bar">
+            <button class="search-btn">Найти или начать беседу</button>
         </div>
-        <div class="server-icon" style="background: #2f3136;" onclick="showJoinModal()" title="Вступить">
-            <i class="fas fa-compass"></i>
+        <div class="dm-list" id="dmList">
+            <div class="dm-header">Личные сообщения</div>
+            </div>
+        
+        <div class="user-panel">
+            <div class="my-avatar" onclick="copyMyCode()">
+                <div class="status-dot"></div>
+            </div>
+            <div class="my-info">
+                <div id="myUiName">User</div>
+                <div id="myUiTag" class="my-discriminator">#0000</div>
+            </div>
+            <div class="panel-icons">
+                <button class="panel-btn" onclick="copyMyCode()" title="Скопировать мой ID для друзей"><i class="fas fa-id-card"></i></button>
+                <button class="panel-btn"><i class="fas fa-microphone"></i></button>
+                <button class="panel-btn"><i class="fas fa-headphones"></i></button>
+                <button class="panel-btn"><i class="fas fa-cog"></i></button>
+            </div>
         </div>
     </div>
 
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header" id="sidebarHeader">
-            Друзья
+    <div class="main-stage">
+        
+        <div id="friendsTab">
+            <div class="friends-header">
+                <div class="friends-icon"><i class="fas fa-user-friends"></i></div>
+                <div style="font-weight: bold; margin-right: 20px;">Друзья</div>
+                <div class="top-tab">В сети</div>
+                <div class="top-tab">Все</div>
+                <div class="top-tab active" style="color: #3ba55c;">Добавить друга</div>
+            </div>
+            <div class="friends-content">
+                <h3 style="text-transform: uppercase; font-size: 12px; color: white;">Добавить друга</h3>
+                <p style="font-size: 12px; color: #b9bbbe; margin-bottom: 10px;">Вам нужен Peer ID (код) друга, чтобы добавить его.</p>
+                
+                <div class="add-friend-box">
+                    <input type="text" id="addFriendInput" class="friend-input" placeholder="Вставьте ID друга (например: e45a-...)">
+                    <button onclick="addFriendRequest()" style="margin-top: 10px; padding: 10px 20px; background: #5865f2; border: none; color: white; border-radius: 3px; cursor: pointer;">
+                        Отправить запрос / Написать
+                    </button>
+                </div>
+                
+                <div id="friendStatusMsg" style="margin-top: 15px; font-size: 14px;"></div>
+            </div>
         </div>
 
-        <div class="nav-list" id="sidebarContent">
+        <div id="chatTab">
+            <div class="chat-header">
+                <i class="fas fa-at" style="color: #72767d; margin-right: 10px;"></i>
+                <span id="chatTitleName">Username</span>
             </div>
-
-        <div class="user-panel">
-            <div style="display:flex; align-items:center;">
-                <div class="nav-avatar" style="width:28px; height:28px; margin-right:5px;">Me</div>
-                <div class="my-info">
-                    <div id="myDisplayName">...</div>
-                    <div style="font-size:10px; color:#aaa;">Online</div>
+            
+            <div class="messages-area" id="messagesArea">
+                </div>
+            
+            <div class="input-area">
+                <div class="chat-input-box">
+                    <i class="fas fa-plus-circle" style="color: #b9bbbe; margin-right: 15px;"></i>
+                    <input type="text" id="msgInput" class="chat-input" placeholder="Написать сообщение...">
                 </div>
             </div>
-            <div>
-                <button class="panel-btn" onclick="copyMyId()" title="Скопировать мой ID"><i class="fas fa-copy"></i></button>
-                <button class="panel-btn" title="Настройки"><i class="fas fa-cog"></i></button>
-            </div>
-        </div>
-    </div>
-
-    <div class="chat-area">
-        <div class="chat-header">
-            <div class="chat-title">
-                <i class="fas fa-bars burger" onclick="toggleMobileMenu()"></i>
-                <i class="fas fa-at" style="color: #72767d;"></i>
-                <span id="chatTitle">Главная</span>
-            </div>
-            <div>
-                <i class="fas fa-phone-alt" style="margin-right: 15px; cursor: pointer; color: var(--text);" onclick="startCall('audio')"></i>
-                <i class="fas fa-video" style="margin-right: 15px; cursor: pointer; color: var(--text);" onclick="startCall('video')"></i>
-                <i class="fas fa-desktop" style="cursor: pointer; color: var(--text);" onclick="toggleScreen()"></i>
-            </div>
         </div>
 
-        <div id="videoContainer"></div>
-
-        <div class="messages-wrapper" id="msgWrapper">
-            <div style="margin-top: auto;">
-                <h1>Добро пожаловать!</h1>
-                <p>Добавьте друзей или создайте группу слева.</p>
-            </div>
-        </div>
-
-        <div class="input-area">
-            <div class="input-box">
-                <i class="fas fa-plus-circle" style="margin-right: 10px; cursor: pointer; color: #b9bbbe;"></i>
-                <input type="text" class="chat-input" id="chatInput" placeholder="Написать сообщение...">
-            </div>
-        </div>
     </div>
 
     <script>
-        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
-        let peer;
-        let myId;
-        let myName;
-        
-        // Context: 'home' (ЛС) или 'group' (Группа)
-        let context = 'home'; 
-        let currentChatId = null; // ID друга или ID группы, с которой общаемся
-        
-        // Хранилище данных
-        let friends = JSON.parse(localStorage.getItem('dc_friends')) || [];
-        let groups = JSON.parse(localStorage.getItem('dc_groups')) || []; // {id, name, isHost}
-        
-        // Соединения
-        let activeConns = {}; // { peerId: connection }
-        let currentCall = null;
-        let localStream = null;
+        // --- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ---
+        let myPeerId = null;
+        let myName = "User";
+        let myTag = "0000"; // Те самые 4 цифры
+        let peer = null;
 
-        // --- 1. ИНИЦИАЛИЗАЦИЯ ---
-        function initApp() {
-            const nick = document.getElementById('myNick').value;
-            if(!nick) return alert("Введите ник");
+        // --- СОСТОЯНИЕ ---
+        let connections = {}; // { peerId: connObject }
+        let chats = {};       // { peerId: { name: "Nick#1234", messages: [] } }
+        let currentChatId = null;
+
+        // 1. СТАРТ ПРИЛОЖЕНИЯ
+        function startApp() {
+            const nick = document.getElementById('nicknameInput').value.trim();
+            if(!nick) return alert("Введите ник!");
+
             myName = nick;
-            
-            document.getElementById('loginModal').style.display = 'none';
-            document.getElementById('myDisplayName').innerText = myName;
+            // Генерируем случайный тег #1234
+            myTag = "#" + Math.floor(1000 + Math.random() * 9000);
 
-            // Инициализация PeerJS
-            peer = new Peer(); // Генерируем случайный ID (в бесплатной версии статические ID сложны)
-            
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('myUiName').innerText = myName;
+            document.getElementById('myUiTag').innerText = myTag;
+
+            initPeer();
+        }
+
+        function initPeer() {
+            peer = new Peer(); // Генерирует случайный ID
+
             peer.on('open', (id) => {
-                myId = id;
-                console.log("My ID:", myId);
-                renderSidebar();
-                renderServerRail();
+                myPeerId = id;
+                console.log("My Peer ID:", id);
             });
 
+            // Когда к нам кто-то подключается
             peer.on('connection', (conn) => {
                 handleConnection(conn);
             });
-            
-            peer.on('call', (call) => {
-                handleIncomingCall(call);
-            });
+        }
 
-            peer.on('error', (err) => {
-                console.error(err);
-                if(err.type === 'peer-unavailable') {
-                    addSystemMsg("Пользователь оффлайн или ID неверен.");
+        // 2. ДОБАВЛЕНИЕ ДРУГА (ПОПЫТКА СОЕДИНЕНИЯ)
+        function addFriendRequest() {
+            const targetId = document.getElementById('addFriendInput').value.trim();
+            if(!targetId) return;
+            if(targetId === myPeerId) return alert("Нельзя добавить самого себя!");
+
+            connectToPeer(targetId);
+        }
+
+        function connectToPeer(id) {
+            const conn = peer.connect(id, {
+                metadata: { 
+                    username: myName, 
+                    tag: myTag 
                 }
             });
-        }
 
-        // --- 2. ЛОГИКА ИНТЕРФЕЙСА (RENDER) ---
-
-        function switchContext(ctx, id = null) {
-            context = ctx;
-            
-            // UI обновления
-            document.querySelectorAll('.server-icon').forEach(el => el.classList.remove('active'));
-            if(ctx === 'home') document.getElementById('homeBtn').classList.add('active');
-            
-            // Если переключились на группу
-            if(ctx === 'group') {
-                const group = groups.find(g => g.id === id);
-                currentChatId = id;
-                document.getElementById(`srv-${id}`).classList.add('active');
-                document.getElementById('sidebarHeader').innerText = group.name;
-                document.getElementById('chatTitle').innerText = "General";
-                renderGroupMembers(group);
-                
-                // Если мы не Хост, нужно подключиться к Хосту группы
-                if(!activeConns[id] && !group.isHost) {
-                    connectToPeer(id, 'group');
-                }
-            } 
-            // Если переключились на Дом (Друзья)
-            else {
-                currentChatId = null;
-                document.getElementById('sidebarHeader').innerText = "Личные сообщения";
-                document.getElementById('chatTitle').innerText = "Выберите друга";
-                renderSidebar();
-            }
-            
-            // Очистить чат (визуально)
-            document.getElementById('msgWrapper').innerHTML = '<div style="margin-top:auto; color:#777;">Начало чата</div>';
-            
-            // На мобилках закрыть меню
-            if(window.innerWidth <= 768) toggleMobileMenu();
-        }
-
-        function renderSidebar() {
-            const list = document.getElementById('sidebarContent');
-            list.innerHTML = `<div style="padding:10px; font-size:11px; font-weight:bold; color:#aaa;">ПРЯМЫЕ СООБЩЕНИЯ <span style="float:right; cursor:pointer;" onclick="showFriendModal()">+</span></div>`;
-            
-            friends.forEach(f => {
-                const div = document.createElement('div');
-                div.className = `nav-item ${currentChatId === f.id ? 'selected' : ''}`;
-                div.innerHTML = `
-                    <div class="nav-avatar">${f.name[0]}</div>
-                    <div style="flex:1">${f.name}</div>
-                    <div style="font-size:10px; color:#aaa;">ID</div>
-                `;
-                div.onclick = () => openDM(f);
-                list.appendChild(div);
-            });
-        }
-
-        function renderServerRail() {
-            const list = document.getElementById('serverList');
-            list.innerHTML = '';
-            groups.forEach(g => {
-                const div = document.createElement('div');
-                div.className = 'server-icon';
-                div.id = `srv-${g.id}`;
-                div.innerText = g.name.substring(0, 2).toUpperCase();
-                div.onclick = () => switchContext('group', g.id);
-                list.appendChild(div);
-            });
-        }
-
-        function renderGroupMembers(group) {
-            // В реальном P2P списке участников сложно синхронизировать без постоянного пинга
-            // Тут мы просто покажем список, кто "подключен" в данный момент (activeConns)
-            const list = document.getElementById('sidebarContent');
-            list.innerHTML = `<div style="padding:10px; font-size:11px; font-weight:bold; color:#aaa;">УЧАСТНИКИ</div>`;
-            
-            // Если я хост, я вижу всех подключенных
-            // Если я гость, я вижу только себя и Хоста (в упрощенной версии)
-            
-            const div = document.createElement('div');
-            div.className = 'nav-item';
-            div.innerHTML = `<div class="nav-avatar" style="background:#ed4245;">H</div> ${group.name} (Host)`;
-            list.appendChild(div);
-        }
-
-        // --- 3. ФУНКЦИОНАЛ ДРУЗЕЙ И ЛС ---
-
-        function showFriendModal() { document.getElementById('friendModal').style.display = 'flex'; }
-        function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
-
-        function addFriend() {
-            const id = document.getElementById('friendIdInput').value.trim();
-            const name = document.getElementById('friendNameInput').value.trim() || "Друг";
-            
-            if(!id) return;
-            friends.push({ id, name });
-            localStorage.setItem('dc_friends', JSON.stringify(friends));
-            
-            closeModals();
-            renderSidebar();
-            addSystemMsg(`Друг ${name} добавлен. Нажмите на него, чтобы начать чат.`);
-        }
-
-        function openDM(friend) {
-            currentChatId = friend.id;
-            document.getElementById('chatTitle').innerText = friend.name;
-            
-            // Визуальное выделение
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
-
-            // Подключаемся, если еще нет соединения
-            if(!activeConns[friend.id]) {
-                connectToPeer(friend.id, 'dm');
-            }
-            
-            if(window.innerWidth <= 768) toggleMobileMenu();
-        }
-
-        // --- 4. ФУНКЦИОНАЛ ГРУПП ---
-
-        function createGroup() {
-            const groupName = prompt("Название группы:");
-            if(!groupName) return;
-            
-            const newGroup = {
-                id: myId, // ID группы = ID создателя (Хоста)
-                name: groupName,
-                isHost: true
-            };
-            
-            groups.push(newGroup);
-            localStorage.setItem('dc_groups', JSON.stringify(groups));
-            renderServerRail();
-            switchContext('group', myId);
-            addSystemMsg(`Группа создана! Ваш ID (${myId}) теперь ID группы. Отправьте его друзьям.`);
-        }
-
-        function showJoinModal() { document.getElementById('joinModal').style.display = 'flex'; }
-
-        function joinGroup() {
-            const hostId = document.getElementById('groupIdInput').value.trim();
-            if(!hostId) return;
-            
-            const newGroup = {
-                id: hostId,
-                name: "Группа " + hostId.substr(0,4),
-                isHost: false
-            };
-            
-            groups.push(newGroup);
-            localStorage.setItem('dc_groups', JSON.stringify(groups));
-            closeModals();
-            renderServerRail();
-            switchContext('group', hostId);
-        }
-
-        // --- 5. СЕТЕВАЯ ЛОГИКА (P2P) ---
-
-        function connectToPeer(peerId, type) {
-            if(peerId === myId) return; // Не подключаемся к себе
-            
-            const conn = peer.connect(peerId, {
-                metadata: { name: myName, type: type }
-            });
-            
-            setupConnEvents(conn);
-        }
-
-        function handleConnection(conn) {
-            setupConnEvents(conn);
-        }
-
-        function setupConnEvents(conn) {
-            activeConns[conn.peer] = conn;
-            
             conn.on('open', () => {
-                console.log("Connected to: " + conn.peer);
-                // Если это ЛС, можно отправить приветствие
+                // Успешное соединение
+                document.getElementById('friendStatusMsg').innerHTML = `<span style="color:#3ba55c">Пользователь найден! Вы можете писать.</span>`;
+                
+                // Отправляем "рукопожатие" чтобы мы появились у него в списке
+                conn.send({
+                    type: 'handshake',
+                    senderId: myPeerId,
+                    name: myName,
+                    tag: myTag
+                });
+
+                registerConnection(conn, id);
+                // Сразу открываем чат
+                addToSidebar(id, "Unknown (Waiting...)"); // Имя обновится после ответа
+                openChat(id);
             });
+
+            conn.on('error', (err) => {
+                document.getElementById('friendStatusMsg').innerHTML = `<span style="color:#ed4245">Пользователь не найден или оффлайн.</span>`;
+            });
+        }
+
+        // 3. ОБРАБОТКА ВХОДЯЩЕГО СОЕДИНЕНИЯ
+        function handleConnection(conn) {
+            // Когда кто-то пишет нам впервые
+            conn.on('open', () => {
+                // Если передали метаданные сразу (PeerJS это позволяет)
+                let remoteName = "User";
+                let remoteTag = "#0000";
+                
+                if(conn.metadata) {
+                    remoteName = conn.metadata.username || "User";
+                    remoteTag = conn.metadata.tag || "#0000";
+                }
+                
+                // Регистрируем
+                registerConnection(conn, conn.peer);
+                
+                // Если этого человека еще нет в списке - добавляем
+                if(!chats[conn.peer]) {
+                    addToSidebar(conn.peer, `${remoteName}${remoteTag}`);
+                }
+            });
+        }
+
+        function registerConnection(conn, id) {
+            connections[id] = conn;
 
             conn.on('data', (data) => {
-                handleData(data, conn);
-            });
-
-            conn.on('close', () => {
-                delete activeConns[conn.peer];
-                addSystemMsg("Пользователь отключился.");
-            });
-        }
-
-        function handleData(data, conn) {
-            // ЛОГИКА МАРШРУТИЗАЦИИ
-            
-            // 1. Если это сообщение для ЛС и мы сейчас в этом ЛС
-            if(data.type === 'dm' && context === 'home' && currentChatId === data.senderId) {
-                addMessage(data.senderName, data.text);
-            }
-            // 2. Если это сообщение для ЛС, но мы не в нем (уведомление)
-            else if(data.type === 'dm') {
-                // Можно добавить красную точку, но пока просто:
-                // addSystemMsg(`Новое сообщение от ${data.senderName}`);
-            }
-            
-            // 3. Если это сообщение Группы
-            else if(data.type === 'group') {
-                // Если я Хост, я должен разослать это всем остальным (Broadcast)
-                if(context === 'group' && currentChatId === myId) { // Я хост этой группы
-                    broadcastGroup(data, data.senderId); // Рассылаем всем кроме отправителя
-                    addMessage(data.senderName, data.text); // Показываем себе
+                // Если это рукопожатие (первый контакт)
+                if(data.type === 'handshake') {
+                    // Обновляем имя в интерфейсе на правильное
+                    const fullName = `${data.name}${data.tag}`;
+                    updateSidebarName(id, fullName);
+                    return;
                 }
-                // Если я Гость и сообщение пришло от Хоста (или переслано Хостом)
-                else if(context === 'group' && currentChatId === conn.peer) {
-                    addMessage(data.senderName, data.text);
-                }
-            }
-        }
 
-        function broadcastGroup(data, excludeId) {
-            // Рассылаем всем подключенным, кроме того, кто прислал
-            Object.values(activeConns).forEach(c => {
-                if(c.peer !== excludeId) {
-                    c.send(data);
+                // Если это сообщение
+                if(data.type === 'message') {
+                    // Если человека нет в списке (редкий кейс), добавляем
+                    if(!chats[id]) {
+                        addToSidebar(id, data.displaySender);
+                    }
+                    receiveMessage(id, data.text);
                 }
             });
         }
 
-        // Отправка сообщений
-        function sendMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            if(!text) return;
-            
-            addMessage(myName, text); // Показываем себе
-            
-            const msgObj = {
-                text: text,
-                senderId: myId,
-                senderName: myName
+        // 4. ЛОГИКА ИНТЕРФЕЙСА (САЙДБАР)
+        function addToSidebar(peerId, displayName) {
+            if(chats[peerId]) return; // Уже есть
+
+            // Создаем хранилище чата
+            chats[peerId] = {
+                name: displayName,
+                messages: []
             };
 
-            // Если ЛС
-            if(context === 'home' && currentChatId) {
-                msgObj.type = 'dm';
-                if(activeConns[currentChatId]) {
-                    activeConns[currentChatId].send(msgObj);
-                } else {
-                    addSystemMsg("Соединение потеряно. Попробуйте обновить страницу или переподключиться.");
-                    connectToPeer(currentChatId, 'dm'); // Пробуем реконнект
-                }
+            const list = document.getElementById('dmList');
+            const el = document.createElement('div');
+            el.className = 'dm-item';
+            el.id = `dm-${peerId}`;
+            el.onclick = () => openChat(peerId);
+            el.innerHTML = `
+                <div class="dm-avatar"></div>
+                <div class="dm-info">
+                    <div class="dm-name" id="name-${peerId}">${displayName}</div>
+                    <div class="dm-tag">Direct Message</div>
+                </div>
+            `;
+            list.appendChild(el);
+        }
+
+        function updateSidebarName(peerId, newName) {
+            if(chats[peerId]) {
+                chats[peerId].name = newName;
+                const el = document.getElementById(`name-${peerId}`);
+                if(el) el.innerText = newName;
+                if(currentChatId === peerId) document.getElementById('chatTitleName').innerText = newName;
             }
-            // Если Группа
-            else if(context === 'group' && currentChatId) {
-                msgObj.type = 'group';
-                
-                if(currentChatId === myId) {
-                    // Я Хост, рассылаем всем
-                    broadcastGroup(msgObj, myId);
-                } else {
-                    // Я Гость, шлем Хосту
-                    if(activeConns[currentChatId]) activeConns[currentChatId].send(msgObj);
-                }
-            }
+        }
+
+        // 5. ОТКРЫТИЕ ЧАТА И ВКЛАДКИ
+        function showFriendsTab() {
+            document.getElementById('friendsTab').style.display = 'flex';
+            document.getElementById('chatTab').style.display = 'none';
+            document.querySelectorAll('.dm-item').forEach(e => e.classList.remove('selected'));
+            currentChatId = null;
+        }
+
+        function openChat(peerId) {
+            currentChatId = peerId;
+            document.getElementById('friendsTab').style.display = 'none';
+            document.getElementById('chatTab').style.display = 'flex';
             
+            // Выделение в меню
+            document.querySelectorAll('.dm-item').forEach(e => e.classList.remove('selected'));
+            document.getElementById(`dm-${peerId}`).classList.add('selected');
+
+            // Заголовок
+            document.getElementById('chatTitleName').innerText = chats[peerId].name;
+
+            // Рендер истории
+            renderMessages(peerId);
+        }
+
+        // 6. СООБЩЕНИЯ
+        function sendMessage() {
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if(!text || !currentChatId) return;
+
+            // Отображаем у себя
+            addMessageToUI(myName, text, true);
+            
+            // Сохраняем в историю
+            chats[currentChatId].messages.push({ sender: myName, text: text, self: true });
+
+            // Отправляем
+            const conn = connections[currentChatId];
+            if(conn && conn.open) {
+                conn.send({
+                    type: 'message',
+                    text: text,
+                    displaySender: `${myName}${myTag}` // Чтобы он знал, кто мы
+                });
+            } else {
+                alert("Пользователь оффлайн или соединение разорвано");
+            }
+
             input.value = '';
         }
 
-        // --- 6. МЕДИА (Звонки и Экран) ---
-        
-        async function startCall(type) {
-            if(!currentChatId) return alert("Выберите диалог!");
-            try {
-                const stream = type === 'video' 
-                    ? await navigator.mediaDevices.getUserMedia({video:true, audio:true})
-                    : await navigator.mediaDevices.getUserMedia({audio:true});
-                
-                addVideo(stream, true);
-                
-                // Звоним
-                const call = peer.call(currentChatId, stream);
-                handleCallStream(call);
-            } catch(e) { console.error(e); }
+        function receiveMessage(id, text) {
+            // Сохраняем
+            const chatName = chats[id].name.split('#')[0]; // Берем только имя без тега для отображения в чате
+            chats[id].messages.push({ sender: chatName, text: text, self: false });
+
+            // Если чат открыт - показываем
+            if(currentChatId === id) {
+                addMessageToUI(chatName, text, false);
+            } else {
+                // Если чат закрыт, можно подсветить (в этой версии просто добавляем в историю)
+                const el = document.getElementById(`dm-${id}`);
+                if(el) el.style.color = "white"; // Подсветка
+            }
         }
 
-        async function toggleScreen() {
-            if(!currentChatId) return;
-            try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({video:true});
-                addVideo(stream, true);
-                const call = peer.call(currentChatId, stream);
-                handleCallStream(call);
-            } catch(e) {}
-        }
-
-        function handleIncomingCall(call) {
-            // Принимаем звонок автоматически
-            navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
-                call.answer(stream);
-                handleCallStream(call);
-            }).catch(() => {
-                call.answer(); // Отвечаем без звука, если нет микрофона
+        function renderMessages(id) {
+            const area = document.getElementById('messagesArea');
+            area.innerHTML = '';
+            chats[id].messages.forEach(msg => {
+                addMessageToUI(msg.sender, msg.text, msg.self);
             });
         }
 
-        function handleCallStream(call) {
-            call.on('stream', remoteStream => {
-                addVideo(remoteStream, false);
-                document.getElementById('videoContainer').classList.add('active');
-            });
-        }
-
-        function addVideo(stream, isLocal) {
-            const container = document.getElementById('videoContainer');
-            container.classList.add('active');
-            
-            const div = document.createElement('div');
-            div.className = 'video-card';
-            
-            const vid = document.createElement('video');
-            vid.srcObject = stream;
-            vid.autoplay = true;
-            if(isLocal) vid.muted = true;
-            
-            div.appendChild(vid);
-            container.appendChild(div);
-        }
-
-        // --- UTILS ---
-        
-        function addMessage(sender, text) {
-            const wrapper = document.getElementById('msgWrapper');
+        function addMessageToUI(sender, text, isSelf) {
+            const area = document.getElementById('messagesArea');
             const div = document.createElement('div');
             div.className = 'message';
+            
+            // Цвет аватарки
+            const color = isSelf ? '#faa61a' : '#5865f2';
+            
             div.innerHTML = `
-                <div class="msg-avatar"></div>
+                <div class="msg-avatar" style="background: ${color}"></div>
                 <div>
-                    <div class="msg-meta">
-                        <span class="msg-username">${sender}</span>
-                        <span class="msg-time">${new Date().toLocaleTimeString().slice(0,5)}</span>
+                    <div class="msg-header">
+                        <div class="msg-username">${sender}</div>
+                        <div class="msg-time">${new Date().toLocaleTimeString().slice(0,5)}</div>
                     </div>
-                    <div class="msg-content">${text}</div>
+                    <div class="msg-text">${text}</div>
                 </div>
             `;
-            wrapper.appendChild(div);
-            wrapper.scrollTop = wrapper.scrollHeight;
+            area.appendChild(div);
+            area.scrollTop = area.scrollHeight;
         }
 
-        function addSystemMsg(text) {
-            const wrapper = document.getElementById('msgWrapper');
-            wrapper.innerHTML += `<div style="color:#ed4245; font-size:12px; margin:5px 0;">${text}</div>`;
+        // UTILS
+        function copyMyCode() {
+            navigator.clipboard.writeText(myPeerId);
+            alert("Ваш ID скопирован! Отправьте его другу, чтобы он добавил вас во вкладке 'Друзья'.");
         }
 
-        function copyMyId() {
-            navigator.clipboard.writeText(myId);
-            alert("ID скопирован в буфер обмена!");
-        }
-
-        function toggleMobileMenu() {
-            const sb = document.getElementById('sidebar');
-            sb.classList.toggle('hidden');
-        }
-
-        // Обработчик Enter
-        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        // Enter to send
+        document.getElementById('msgInput').addEventListener('keypress', (e) => {
             if(e.key === 'Enter') sendMessage();
         });
-
-        // Mobile init
-        if(window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.add('hidden');
-        }
 
     </script>
 </body>
